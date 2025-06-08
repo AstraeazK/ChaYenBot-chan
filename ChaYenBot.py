@@ -114,7 +114,7 @@ async def my_schedule(interaction: discord.Interaction):
     result_blocks = await get_schedule_result(user=user)
     if result_blocks:
         response = "\n\n".join(result_blocks)
-        await interaction.response.send_message(f"**ตารางนัดของคุณ:**\n{response}")
+        await interaction.response.send_message(f"**นัดของคุณค่า~! 💖**\n{response}")
     else:
         await interaction.response.send_message("คุณไม่มีตารางนัดที่ยังไม่เสร็จ")
 
