@@ -5,10 +5,12 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 import os
+import json
 
 load_dotenv()
+
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
+GOOGLE_SHEETS_JSON_CONTENT = os.getenv("GOOGLE_SHEETS_JSON_CONTENT")
 SHEET_URL = os.getenv("SHEET_URL")
 SERVER_ID = int(os.getenv("SERVER_ID"))
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
@@ -16,7 +18,10 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_JSON, scope)
+# ✅ ใช้ keyfile_dict แทน keyfile_name
+info = json.loads(GOOGLE_SHEETS_JSON_CONTENT)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(info, scope)
+
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
