@@ -86,7 +86,7 @@ async def get_schedule_result(user: discord.User = None):
 # === /ping ===
 @tree.command(name="ping", description="วันนี้คุณโทษตาเอกแล้วหรือยัง", guild=discord.Object(id=SERVER_ID))
 async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("ตาเอกเป็นเกย์")
+    await interaction.response.send_message("ชาเย็นจังแอบกระซิบ~ ตาเอกหัวใจสีรุ้งน่ารักมากเลยค่า~! สมกับชื่อตาเอกเป็นเกย์เลยล่ะค่ะ 💖🌈")
 
 # === /check-schedule === 
 @tree.command(name="check-schedule", description="ตรวจสอบตาราง", guild=discord.Object(id=SERVER_ID))
