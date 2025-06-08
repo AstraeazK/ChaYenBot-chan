@@ -102,7 +102,7 @@ async def check_schedule(
     result_blocks = await get_schedule_result(user=user)
     if result_blocks:
         response = "\n\n".join(result_blocks)
-        await interaction.response.send_message(f"**ตารางนัด:**\n{response}")
+        await interaction.response.send_message(f"**นี่ค่า~! 💖 นัดที่ยังเหลือในสัปดาห์นี้~ อย่าลืมไปตามนัดกันน้า~! 📅🍬**\n{response}")
     else:
         await interaction.response.send_message("ไม่มีตารางนัด")
 
