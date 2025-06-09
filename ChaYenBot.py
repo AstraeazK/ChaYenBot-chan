@@ -5,14 +5,11 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 import os
-import json
 import random
-import datetime
 
 load_dotenv()
-
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GOOGLE_SHEETS_JSON_CONTENT = os.getenv("GOOGLE_SHEETS_JSON_CONTENT")
+GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
 SHEET_URL = os.getenv("SHEET_URL")
 SERVER_ID = int(os.getenv("SERVER_ID"))
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
@@ -20,10 +17,7 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 
-# ✅ ใช้ keyfile_dict แทน keyfile_name
-info = json.loads(GOOGLE_SHEETS_JSON_CONTENT)
-creds = ServiceAccountCredentials.from_json_keyfile_dict(info, scope)
-
+creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_JSON, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
@@ -42,49 +36,48 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
 
-def extract_timestamp(time_str):
-    try:
-        dt = datetime.datetime.strptime(time_str.strip(), "%d/%m/%Y %H:%M")
-        return int(dt.timestamp())
-    except Exception:
-        return 0
-    
 async def get_schedule_result(user: discord.User = None):
-    values = worksheet.get_all_values()[3:]  # ข้าม header 3 บรรทัดแรก
-    col_J = worksheet.col_values(10)[3:]     # เวลา (J)
-    col_L = worksheet.col_values(12)[3:]     # Done (L)
-    col_N = worksheet.col_values(14)[3:]     # Block ชื่อบอส (N)
+    col_L = worksheet.col_values(12)[3:]
+    col_N = worksheet.col_values(14)[3:]
 
     result_blocks = []
 
     for i in range(0, len(col_L), 2):
         is_done = col_L[i].strip().upper()
         block = col_N[i].strip()
-        if is_done != "FALSE" or not block:
-            continue
 
-        job_row = values[i + 1] if i + 1 < len(values) else []
-        name_row = values[i] if i < len(values) else []
+        if is_done == "FALSE" and block:
+            if user:
+                username = f"@{user.name.lower()}"
+                if username not in block.lower():
+                    continue
 
-        combined_lines = []
-        for col in range(0, min(len(name_row), len(job_row)), 2):  # A,C,E,...
-            name = name_row[col].strip()
-            job = job_row[col].strip()
-            if not name:
-                continue
+                block_lines = block.splitlines()
+                updated_lines = []
+                for line in block_lines:
+                    if username in line.lower():
+                        before_at, after_at = line.split("@", 1)
+                        if ":" in before_at:
+                            icon, name = before_at.rsplit(":", 1)
+                            name = name.strip()
+                            icon = icon.strip()
+                            line = f"{icon}: **{name}**"
+                        else:
+                            name = before_at.strip()
+                            line = f"**{name}**"
+                    elif "@" in line:
+                        line = line.split("@")[0].strip()
+                    updated_lines.append(line)
+                block = "\n".join(updated_lines)
 
-            show_name = f"**{name}**" if user and name.lower() == user.display_name.lower() else name
-            if job:
-                combined_lines.append(f"{job}: {show_name}")
             else:
-                combined_lines.append(show_name)
+                block_lines = block.splitlines()
+                block = "\n".join(line.split("@")[0].strip() if "@" in line else line for line in block_lines)
 
-        timestamp = extract_timestamp(col_J[i]) if i < len(col_J) else 0
-        time_display = f"<t:{timestamp}:F> ⏰ <t:{timestamp}:R>" if timestamp else ""
-        block_text = f"**{block}**\n{time_display}\n" + "\n".join(combined_lines)
-        result_blocks.append(block_text)
+            result_blocks.append(block)
 
     return result_blocks
+
 
 # === /ping ===
 @tree.command(
@@ -95,13 +88,14 @@ async def get_schedule_result(user: discord.User = None):
 async def ping(interaction: discord.Interaction):
     messages = [
         "ชาเย็นจังแอบกระซิบ~ ตาเอกหัวใจสีรุ้งน่ารักมากเลยค่า~! สมกับชื่อตาเอกเป็นเกย์เลยล่ะค่ะ 💖🌈",
-        "อ๊ะ~! รู้ยังคะ~? ตาเอกจังเป็นหนุ่มสายรุ้งสุดอบอุ่นเลยน้า~! 🌈🍧",
-        "ตาเอก... วันนี้ก็ยังน่ารักเหมือนเดิมเลยน้า~! 💕✨",
-        "ใครยังไม่โทษตาเอกวันนี้ รีบเลยนะคะ! ไม่งั้นตาเอกจะงอนแล้วน้า~ 🥺🌈",
+        "อ๊ะ~! รู้ยังคะ~? ตาเอกจังเป็นหนุ่มสายรุ้งสุดจะเกย์เลยน้า~! 🌈🍧",
+        "ตาเอก... วันนี้ก็ยังเกย์หมือนเดิมเลยน้า~! 💕✨",
+        "ใครยังไม่โทษตาเอกวันนี้ รีบเลยนะคะ! ไม่งั้นตาเอกจะเกย์ใส่แล้วน้า~ 🥺🌈",
         "มีใครเห็นตาเอกมั้ยคะ~? เห็นว่าหัวใจเค้าสีรุ้งแวววาวเลยล่ะ~! 💓🌈"
     ]
     selected_message = random.choice(messages)
     await interaction.response.send_message(selected_message)
+
 
 # === /check-schedule === 
 @tree.command(name="check-schedule", description="ตรวจสอบตาราง", guild=discord.Object(id=SERVER_ID))
@@ -119,7 +113,7 @@ async def check_schedule(
         response = "\n\n".join(result_blocks)
         await interaction.response.send_message(f"**นี่ค่า~! 💖 นัดที่ยังเหลือในสัปดาห์นี้~ อย่าลืมไปตามนัดกันน้า~! 📅🍬**\n{response}")
     else:
-        await interaction.response.send_message("ไม่มีตารางนัด")
+        await interaction.response.send_message("ตารางว่างโล่งงง~ เหมือนใจชาเย็นจังเลยค่ะ~ ☁️💙 ไม่มีนัดที่ยังไม่เสร็จแล้วน้า~!")
 
 
 # === /my-schedule === 
@@ -131,6 +125,6 @@ async def my_schedule(interaction: discord.Interaction):
         response = "\n\n".join(result_blocks)
         await interaction.response.send_message(f"**นัดของคุณค่า~! 💖**\n{response}")
     else:
-        await interaction.response.send_message("คุณไม่มีตารางนัดที่ยังไม่เสร็จ")
+        await interaction.response.send_message("เย้~! 🎉 ตอนนี้ไม่มีนัดค้างอยู่เลยน้า~! ชาเย็นจังปลื้มมากๆ เลยค่า~! 💖📅")
 
 bot.run(DISCORD_TOKEN)
