@@ -18,7 +18,6 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 with open("emoji.json", "r", encoding="utf-8") as f:
     emoji_map = json.load(f)
 
-
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 
