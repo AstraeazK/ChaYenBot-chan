@@ -6,6 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 import os
 import random
+import json
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -13,6 +14,10 @@ GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
 SHEET_URL = os.getenv("SHEET_URL")
 SERVER_ID = int(os.getenv("SERVER_ID"))
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+
+with open("emoji.json", "r", encoding="utf-8") as f:
+    emoji_map = json.load(f)
+
 
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
@@ -37,12 +42,20 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
 
 async def get_schedule_result(user: discord.User = None):
+    col_K = worksheet.col_values(11)[3:]
     col_L = worksheet.col_values(12)[3:]
     col_N = worksheet.col_values(14)[3:]
 
     result_blocks = []
 
     for i in range(0, len(col_L), 2):
+        if i >= len(col_K):
+            continue
+
+        k_value = col_K[i].strip().upper()
+        if k_value != "TRUE":
+            continue
+
         is_done = col_L[i].strip().upper()
         block = col_N[i].strip()
 
@@ -69,19 +82,23 @@ async def get_schedule_result(user: discord.User = None):
                         line = line.split("@")[0].strip()
                     updated_lines.append(line)
                 block = "\n".join(updated_lines)
-
             else:
                 block_lines = block.splitlines()
                 block = "\n".join(line.split("@")[0].strip() if "@" in line else line for line in block_lines)
 
+            for key, emoji in emoji_map.items():
+                block = block.replace(f":{key}:", emoji)
+
             result_blocks.append(block)
+
 
     return result_blocks
 
 
-# === /ping ===
+
+# === /gay ===
 @tree.command(
-    name="ping",
+    name="gay",
     description="วันนี้คุณโทษตาเอกแล้วหรือยัง",
     guild=discord.Object(id=SERVER_ID)
 )
