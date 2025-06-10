@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 import os
 import random
 import json
+from result_schedule import get_schedule_result
+from time_auto_schedule import (
+    check_schedule_alerts,
+    clear_alerted_events_daily,
+    load_alerted_events
+)
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -40,59 +46,9 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
 
-async def get_schedule_result(user: discord.User = None):
-    col_K = worksheet.col_values(11)[3:]
-    col_L = worksheet.col_values(12)[3:]
-    col_N = worksheet.col_values(14)[3:]
-
-    result_blocks = []
-
-    for i in range(0, len(col_L), 2):
-        if i >= len(col_K):
-            continue
-
-        k_value = col_K[i].strip().upper()
-        if k_value != "TRUE":
-            continue
-
-        is_done = col_L[i].strip().upper()
-        block = col_N[i].strip()
-
-        if is_done == "FALSE" and block:
-            if user:
-                username = f"@{user.name.lower()}"
-                if username not in block.lower():
-                    continue
-
-                block_lines = block.splitlines()
-                updated_lines = []
-                for line in block_lines:
-                    if username in line.lower():
-                        before_at, after_at = line.split("@", 1)
-                        if ":" in before_at:
-                            icon, name = before_at.rsplit(":", 1)
-                            name = name.strip()
-                            icon = icon.strip()
-                            line = f"{icon}: **{name}**"
-                        else:
-                            name = before_at.strip()
-                            line = f"**{name}**"
-                    elif "@" in line:
-                        line = line.split("@")[0].strip()
-                    updated_lines.append(line)
-                block = "\n".join(updated_lines)
-            else:
-                block_lines = block.splitlines()
-                block = "\n".join(line.split("@")[0].strip() if "@" in line else line for line in block_lines)
-
-            for key, emoji in emoji_map.items():
-                block = block.replace(f":{key}:", emoji)
-
-            result_blocks.append(block)
-
-
-    return result_blocks
-
+    load_alerted_events()
+    bot.loop.create_task(check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
+    bot.loop.create_task(clear_alerted_events_daily())
 
 
 # === /gay ===
@@ -118,6 +74,7 @@ async def ping(interaction: discord.Interaction):
 @app_commands.choices(schedule=[
     discord.app_commands.Choice(name="ตารางนัดที่ยังเหลือ", value="unfinish"),
 ])
+
 async def check_schedule(
     interaction: discord.Interaction,
     schedule: discord.app_commands.Choice[str],
@@ -139,7 +96,7 @@ async def check_schedule(
                 inline=False
             )
 
-        embed.set_footer(text="ชาเย็นจัง - ไม่พลาดนัดแน่นอนค่า~! 💙")
+        # embed.set_footer(text="ชาเย็นจัง - ไม่พลาดนัดแน่นอนค่า~! 💙")
         await interaction.response.send_message(embed=embed)
 
     else:
@@ -148,7 +105,7 @@ async def check_schedule(
             description="ตารางว่างโล่งงง~ เหมือนใจชาเย็นจังเลยค่ะ~ ☁️💙\nไปพักผ่อนกันได้เต็มที่เลยนะคะ~!",
             color=discord.Color.green()
         )
-        embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยจัดการตารางตัวจริง~!")
+        # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยจัดการตารางตัวจริง~!")
         await interaction.response.send_message(embed=embed)
 
 
@@ -172,7 +129,7 @@ async def my_schedule(interaction: discord.Interaction):
                 inline=False
             )
 
-        embed.set_footer(text="ชาเย็นจัง - ขยันจำตารางแทนให้เสมอเลยค่า~! 💙")
+        # embed.set_footer(text="ชาเย็นจัง - ขยันจำตารางแทนให้เสมอเลยค่า~! 💙")
         await interaction.response.send_message(embed=embed)
 
     else:
@@ -181,7 +138,7 @@ async def my_schedule(interaction: discord.Interaction):
             description="ชาเย็นจังดีใจมากๆ เลยนะคะที่ไม่มีนัดค้างอยู่~ ไปพักผ่อนกันเถอะ! 💖📅",
             color=discord.Color.green()
         )
-        embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
+        # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
         await interaction.response.send_message(embed=embed)
 
 
@@ -211,7 +168,7 @@ async def help_command(interaction: discord.Interaction):
         inline=False
     )
 
-    embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
+    # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
     await interaction.response.send_message(embed=embed)
 
 
