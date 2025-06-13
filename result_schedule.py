@@ -6,6 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
 import os
 import json
+import base64
 
 with open("emoji.json", "r", encoding="utf-8") as f:
     emoji_map = json.load(f)
@@ -17,7 +18,13 @@ SHEET_URL = os.getenv("SHEET_URL")
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_JSON, scope)
+base64_json = os.getenv("GOOGLE_SHEETS_JSON_BASE64")
+if base64_json is None:
+    raise ValueError("GOOGLE_SHEETS_JSON_BASE64 not found in environment variables!")
+
+creds_dict = json.loads(base64.b64decode(base64_json).decode("utf-8"))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+# creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_JSON, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
