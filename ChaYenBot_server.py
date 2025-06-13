@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 import random
 import json
+from keep_alive import keep_alive
 from result_schedule import get_schedule_result
 from time_auto_schedule import (
     check_schedule_alerts,
@@ -172,5 +173,5 @@ async def help_command(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-
+keep_alive()
 bot.run(DISCORD_TOKEN)
