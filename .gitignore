@@ -1,4 +1,4 @@
 .env
 *.json
 __pycache__/
-ChaYenBot.py
+ChaYenBot_local.py
