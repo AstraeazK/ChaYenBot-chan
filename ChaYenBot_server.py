@@ -176,8 +176,9 @@ async def help_command(interaction: discord.Interaction):
 
     embed.add_field(name="🗓️ คำสั่งตารางนัด",
                     value="""
-            > `/check-schedule` - ตรวจสอบนัดทั้งหมดที่ยังไม่เสร็จ!  
-            > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง!
+            > `/all-schedule` - ตรวจสอบนัดทั้งหมดที่ยังไม่เสร็จ
+            > `/user-schedule` - ดูตารางนัดของผู้ใช้รายบุคคล
+            > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง
             """,
                     inline=False)
 
