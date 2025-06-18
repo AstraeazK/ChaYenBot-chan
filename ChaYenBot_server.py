@@ -2,18 +2,15 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import gspread
+import os, json, base64
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
-import os
 import random
-import json
 from keep_alive import keep_alive
 from result_schedule import get_schedule_result
-from time_auto_schedule import (
-    check_schedule_alerts,
-    clear_alerted_events_daily,
-    load_alerted_events
-)
+from time_auto_schedule import (check_schedule_alerts,
+                                clear_alerted_events_daily,
+                                load_alerted_events)
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -25,10 +22,18 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 with open("emoji.json", "r", encoding="utf-8") as f:
     emoji_map = json.load(f)
 
-scope = ["https://spreadsheets.google.com/feeds",
-         "https://www.googleapis.com/auth/drive"]
+scope = [
+    'https://spreadsheets.google.com/feeds',
+    'https://www.googleapis.com/auth/drive'
+]
+base64_json = os.getenv("GOOGLE_SHEETS_JSON_BASE64")
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_JSON, scope)
+if base64_json is None:
+    raise ValueError(
+        "GOOGLE_SHEETS_JSON_BASE64 not found in environment variables!")
+
+creds_dict = json.loads(base64.b64decode(base64_json).decode("utf-8"))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
@@ -37,8 +42,8 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-@bot.event
 
+@bot.event
 async def on_ready():
     print(f'✅ Logged in as {bot.user.name}')
     try:
@@ -48,16 +53,15 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
 
     load_alerted_events()
-    bot.loop.create_task(check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
+    bot.loop.create_task(
+        check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
     bot.loop.create_task(clear_alerted_events_daily())
 
 
 # === /gay ===
-@tree.command(
-    name="gay",
-    description="วันนี้คุณโทษตาเอกแล้วหรือยัง",
-    guild=discord.Object(id=SERVER_ID)
-)
+@tree.command(name="gay",
+              description="วันนี้คุณโทษตาเอกแล้วหรือยัง",
+              guild=discord.Object(id=SERVER_ID))
 async def ping(interaction: discord.Interaction):
     messages = [
         "ชาเย็นจังแอบกระซิบ~ ตาเอกหัวใจสีรุ้งน่ารักมากเลยค่า~! สมกับชื่อตาเอกเป็นเกย์เลยล่ะค่ะ 💖🌈",
@@ -74,49 +78,64 @@ async def ping(interaction: discord.Interaction):
     selected_message = random.choice(messages)
     await interaction.response.send_message(selected_message)
 
-# === /check-schedule === 
-@tree.command(name="check-schedule", description="ตรวจสอบตาราง", guild=discord.Object(id=SERVER_ID))
-@app_commands.describe(schedule="เลือกว่าจะดูอะไร", user="ดูตารางของ @ผู้ใช้")
-@app_commands.choices(schedule=[
-    discord.app_commands.Choice(name="ตารางนัดที่ยังเหลือ", value="unfinish"),
-])
-
-async def check_schedule(
-    interaction: discord.Interaction,
-    schedule: discord.app_commands.Choice[str],
-    user: discord.User = None
-):
-    result_blocks = await get_schedule_result(user=user)
+# === /all-schedule ===
+@tree.command(name="all-schedule",
+              description="ดูตารางนัดทั้งหมด",
+              guild=discord.Object(id=SERVER_ID))
+async def all_schedule(interaction: discord.Interaction):
+    result_blocks = await get_schedule_result(user=None
+                                              )  # ไม่มี user = แสดงทั้งหมด
 
     if result_blocks:
         embed = discord.Embed(
-            title="📅 นัดที่ยังเหลือในสัปดาห์นี้~",
-            description="อย่าลืมไปตามนัดกันน้า~ ชาเย็นจังเป็นห่วงนะคะ~! 💖🍬",
-            color=discord.Color.orange()
-        )
+            title="📅 ตารางนัดทั้งหมดในสัปดาห์นี้~",
+            description="ชาเย็นจังสรุปนัดให้เรียบร้อยแล้วน้า~ 💖",
+            color=discord.Color.orange())
 
         for idx, block in enumerate(result_blocks, start=1):
-            embed.add_field(
-                name=f"📝 นัดที่ {idx}",
-                value=f"\n{block}\n\u200b",
-                inline=False
-            )
+            embed.add_field(name=f"📝 นัดที่ {idx}",
+                            value=f"{block}\n\u200b",
+                            inline=False)
 
-        # embed.set_footer(text="ชาเย็นจัง - ไม่พลาดนัดแน่นอนค่า~! 💙")
         await interaction.response.send_message(embed=embed)
-
     else:
         embed = discord.Embed(
-            title="✨ ไม่มีนัดที่ยังไม่เสร็จแล้วน้า~!",
-            description="ตารางว่างโล่งงง~ เหมือนใจชาเย็นจังเลยค่ะ~ ☁️💙\nไปพักผ่อนกันได้เต็มที่เลยนะคะ~!",
-            color=discord.Color.green()
-        )
-        # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยจัดการตารางตัวจริง~!")
+            title="✨ ยังไม่มีนัดเลย~!",
+            description="ว่างทั้งสัปดาห์เลยค่า~ ไปเที่ยวกับชาเย็นจังมั้ย~ ☁️💙",
+            color=discord.Color.green())
         await interaction.response.send_message(embed=embed)
 
 
-# === /my-schedule === 
-@tree.command(name="my-schedule", description="ดูตารางนัดของฉัน", guild=discord.Object(id=SERVER_ID))
+# === /user-schedule ===
+@tree.command(name="user-schedule",
+              description="ดูตารางนัดของผู้ใช้",
+              guild=discord.Object(id=SERVER_ID))
+@app_commands.describe(user="เลือกผู้ใช้ที่ต้องการดูตาราง")
+async def user_schedule(interaction: discord.Interaction, user: discord.User):
+    result_blocks = await get_schedule_result(user=user)
+
+    if result_blocks:
+        embed = discord.Embed(title=f"📅 ตารางนัดของ {user.display_name}~",
+                              description="ชาเย็นจังสรุปให้นะคะ~ 💖🍬",
+                              color=discord.Color.orange())
+
+        for idx, block in enumerate(result_blocks, start=1):
+            embed.add_field(name=f"📝 นัดที่ {idx}",
+                            value=f"{block}\n\u200b",
+                            inline=False)
+
+        await interaction.response.send_message(embed=embed)
+    else:
+        embed = discord.Embed(title=f"✨ {user.display_name} ยังไม่มีนัดเลย~!",
+                              description="ว่างโล่งเหมือนใจชาเย็นจังเลยค่ะ~ 🩵",
+                              color=discord.Color.green())
+        await interaction.response.send_message(embed=embed)
+
+
+# === /my-schedule ===
+@tree.command(name="my-schedule",
+              description="ดูตารางนัดของฉัน",
+              guild=discord.Object(id=SERVER_ID))
 async def my_schedule(interaction: discord.Interaction):
     user = interaction.user
     result_blocks = await get_schedule_result(user=user)
@@ -125,15 +144,12 @@ async def my_schedule(interaction: discord.Interaction):
         embed = discord.Embed(
             title="📅 นัดของคุณค่า~!",
             description="ชาเย็นจังสรุปตารางนัดมาให้แล้วนะคะ~ 💖",
-            color=discord.Color.blue()
-        )
+            color=discord.Color.blue())
 
         for idx, block in enumerate(result_blocks, start=1):
-            embed.add_field(
-                name=f"📝 นัดที่ {idx}",
-                value=f"\n{block}\n\u200b",
-                inline=False
-            )
+            embed.add_field(name=f"📝 นัดที่ {idx}",
+                            value=f"\n{block}\n\u200b",
+                            inline=False)
 
         # embed.set_footer(text="ชาเย็นจัง - ขยันจำตารางแทนให้เสมอเลยค่า~! 💙")
         await interaction.response.send_message(embed=embed)
@@ -141,38 +157,35 @@ async def my_schedule(interaction: discord.Interaction):
     else:
         embed = discord.Embed(
             title="🎉 ไม่มีนัดค้างอยู่เลย~!",
-            description="ชาเย็นจังดีใจมากๆ เลยนะคะที่ไม่มีนัดค้างอยู่~ ไปพักผ่อนกันเถอะ! 💖📅",
-            color=discord.Color.green()
-        )
+            description=
+            "ชาเย็นจังดีใจมากๆ เลยนะคะที่ไม่มีนัดค้างอยู่~ ไปพักผ่อนกันเถอะ! 💖📅",
+            color=discord.Color.green())
         # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
         await interaction.response.send_message(embed=embed)
 
 
-# === /help === 
-@tree.command(name="help", description="แสดงคำสั่งทั้งหมดของบอท", guild=discord.Object(id=SERVER_ID))
+# === /help ===
+@tree.command(name="help",
+              description="แสดงคำสั่งทั้งหมดของบอท",
+              guild=discord.Object(id=SERVER_ID))
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
         title="📖 ความช่วยเหลือจากชาเย็นจัง~!",
         description="**คำสั่งทั้งหมดที่คุณสามารถใช้ได้น้า~**",
-        color=discord.Color.purple()
-    )
+        color=discord.Color.purple())
 
-    embed.add_field(
-        name="🗓️ คำสั่งตารางนัด",
-        value="""
+    embed.add_field(name="🗓️ คำสั่งตารางนัด",
+                    value="""
             > `/check-schedule` - ตรวจสอบนัดทั้งหมดที่ยังไม่เสร็จ!  
             > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง!
             """,
-        inline=False
-    )
+                    inline=False)
 
-    embed.add_field(
-        name="🌈 คำสั่งอยากเทสต์ระบบก็ลองเลยค่า~!",
-        value="""
+    embed.add_field(name="🌈 คำสั่งอยากเทสต์ระบบก็ลองเลยค่า~!",
+                    value="""
             > `/gay` - วันนี้คุณโทษตาเอกแล้วหรือยังนะ~?
             """,
-        inline=False
-    )
+                    inline=False)
 
     # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
     await interaction.response.send_message(embed=embed)
