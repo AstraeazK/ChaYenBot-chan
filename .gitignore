@@ -1,5 +1,3 @@
 .env
-*.json
+chayenbot-50c211cb7ff8.json
 __pycache__/
-ChaYenBot_local.py
-*.txt
