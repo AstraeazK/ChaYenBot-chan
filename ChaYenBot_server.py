@@ -188,6 +188,14 @@ async def help_command(interaction: discord.Interaction):
             """,
                     inline=False)
 
+    embed.add_field(name="⚠️ หมายเหตุสำคัญ",
+                    value="""
+    > บอทอาจไม่สามารถใช้งานได้ตลอดเวลาน้า~  
+    > หากต้องการให้เปิดใช้งาน แจ้งปัญหา หรือเสนอฟีเจอร์เพิ่มเติม  
+    > สามารถติดต่อ `@shark.kie` ไปได้เลย~ 💌
+    """,
+                    inline=False)
+
     # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
     await interaction.response.send_message(embed=embed)
 
