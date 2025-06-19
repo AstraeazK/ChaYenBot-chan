@@ -2,3 +2,4 @@
 *.json
 __pycache__/
 ChaYenBot_local.py
+*.txt
