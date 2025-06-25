@@ -32,7 +32,7 @@ worksheet = sheet.get_worksheet(2)
 async def get_schedule_result(user=None):
     col_K = worksheet.col_values(11)[3:]
     col_L = worksheet.col_values(12)[3:]
-    col_N = worksheet.col_values(14)[3:]
+    col_N = worksheet.col_values(15)[3:]
 
     result_blocks = []
 
