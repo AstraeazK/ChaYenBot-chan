@@ -7,26 +7,26 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
     await bot.wait_until_ready()
     while not bot.is_closed():
         try:
-            col_J = worksheet.col_values(10)[3:]  # J4+
-            col_K = worksheet.col_values(11)[3:]  # K4+
-            col_L = worksheet.col_values(12)[3:]  # L4+
-            col_M = worksheet.col_values(13)[3:]  # M4+
+            col_J = worksheet.col_values(10)[3:]
+            col_K = worksheet.col_values(11)[3:]
+            col_L = worksheet.col_values(12)[3:]
+            col_M = worksheet.col_values(13)[3:]
 
             now = datetime.now(timezone.utc)
-            target_entries = []  # List of (timestamp, row_index) to alert
+            target_entries = []
 
             for i in range(min(len(col_J), len(col_K), len(col_L), len(col_M))):
-                row_index = i + 4  # Actual row number
+                row_index = i + 4
 
                 if row_index % 2 != 0:
-                    continue  # Skip odd rows (M5, M7, ...)
+                    continue 
 
                 j_val = col_J[i].strip()
                 k_val = col_K[i].strip().upper()
                 l_val = col_L[i].strip().upper()
                 m_val = col_M[i].strip().upper() if i < len(col_M) else ""
 
-                if not j_val or k_val != "TRUE" or l_val != "FALSE" or m_val == "FALSE":
+                if not j_val or k_val != "TRUE" or l_val != "FALSE" or m_val == "TRUE":
                     continue
 
                 if j_val.startswith("<t:") and j_val.endswith(">"):
