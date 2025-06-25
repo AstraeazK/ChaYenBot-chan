@@ -1,7 +1,26 @@
 import asyncio
+import json
+import os
 from datetime import datetime, timedelta, timezone
 import discord
 from result_schedule import get_schedule_result
+
+ALERTED_EVENTS_FILE = "alerted_events.json"
+ALERTED_EVENTS = set()
+
+def load_alerted_events():
+    global ALERTED_EVENTS
+    if os.path.exists(ALERTED_EVENTS_FILE):
+        with open(ALERTED_EVENTS_FILE, "r") as f:
+            try:
+                loaded = json.load(f)
+                ALERTED_EVENTS.update(int(x) for x in loaded)
+            except json.JSONDecodeError:
+                ALERTED_EVENTS.clear()
+
+def save_alerted_events():
+    with open(ALERTED_EVENTS_FILE, "w") as f:
+        json.dump([int(x) for x in ALERTED_EVENTS], f)
 
 async def check_schedule_alerts(bot, worksheet, channel_id):
     await bot.wait_until_ready()
@@ -10,23 +29,16 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
             col_J = worksheet.col_values(10)[3:]
             col_K = worksheet.col_values(11)[3:]
             col_L = worksheet.col_values(12)[3:]
-            col_M = worksheet.col_values(13)[3:]
 
             now = datetime.now(timezone.utc)
-            target_entries = []
+            target_timestamps = []
 
-            for i in range(min(len(col_J), len(col_K), len(col_L), len(col_M))):
-                row_index = i + 4
-
-                if row_index % 2 != 0:
-                    continue 
-
+            for i in range(min(len(col_J), len(col_K), len(col_L))):
                 j_val = col_J[i].strip()
                 k_val = col_K[i].strip().upper()
                 l_val = col_L[i].strip().upper()
-                m_val = col_M[i].strip().upper() if i < len(col_M) else ""
 
-                if not j_val or k_val != "TRUE" or l_val != "FALSE" or m_val == "TRUE":
+                if not j_val or k_val != "TRUE" or l_val != "FALSE":
                     continue
 
                 if j_val.startswith("<t:") and j_val.endswith(">"):
@@ -36,29 +48,45 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
                         event_time = datetime.fromtimestamp(timestamp, tz=timezone.utc)
                         time_diff = (event_time - now).total_seconds()
 
-                        if 59 * 60 <= time_diff <= 61 * 60:
-                            target_entries.append((timestamp, row_index))
+                        if 59 * 60 <= time_diff <= 61 * 60 and timestamp not in ALERTED_EVENTS:
+                            target_timestamps.append(timestamp)
 
                     except Exception as e:
                         print(f"[ERROR] Failed to parse timestamp: {e}")
 
-            if target_entries:
+            if target_timestamps:
                 channel = bot.get_channel(channel_id)
                 result_blocks = await get_schedule_result(user=None)
                 sent_blocks = set()
 
-                for timestamp, row_index in target_entries:
-                    matched_block = next((b for b in result_blocks if f"<t:{timestamp}:" in b), None)
+                for block in result_blocks:
+                    lines = block.splitlines()
+                    block_timestamp = None
 
-                    if matched_block and hash(matched_block) not in sent_blocks:
-                        cleaned_lines = [
-                            line.lstrip("#").strip()
-                            for i, line in enumerate(matched_block.splitlines())
-                            if not (i == 0 and line.strip().startswith("#"))
-                        ]
+                    # หาตัว timestamp
+                    for line in lines:
+                        if "<t:" in line and ":F>" in line:
+                            try:
+                                block_timestamp = int(line.split("<t:")[1].split(":")[0])
+                                break
+                            except:
+                                continue
 
-                        formatted_header = f"<t:{timestamp}:F> ⏰ <t:{timestamp}:R>"
-                        final_text = f"{formatted_header}\n" + "\n".join(cleaned_lines)
+                    if block_timestamp in target_timestamps:
+                        block_hash = hash(block)
+                        if block_hash in sent_blocks:
+                            continue
+
+                        cleaned_lines = []
+                        for i, line in enumerate(lines):
+                            if i == 0 and line.strip().startswith("#"):
+                                continue
+                            cleaned_lines.append(line.lstrip("#").strip())
+
+                        cleaned_text = "\n".join(cleaned_lines)
+
+                        formatted_header = f"<t:{block_timestamp}:F> ⏰ <t:{block_timestamp}:R>"
+                        final_text = f"{formatted_header}\n{cleaned_text}"
 
                         if channel:
                             embed = discord.Embed(
@@ -66,14 +94,16 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
                                 description=final_text,
                                 color=discord.Color.pink()
                             )
+                            # embed.set_footer(text="ชาเย็นจังเตือนด้วยความรัก 💙")
                             await channel.send(embed=embed)
 
-                        sent_blocks.add(hash(matched_block))
-                        worksheet.update_cell(row_index, 13, "TRUE")
+                        sent_blocks.add(block_hash)
+
+                ALERTED_EVENTS.update(target_timestamps)
+                save_alerted_events()
+
 
         except Exception as e:
             print(f"[ERROR] in schedule check loop: {e}")
 
         await asyncio.sleep(60)
-
-
