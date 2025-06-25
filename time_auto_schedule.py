@@ -26,7 +26,7 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
                 l_val = col_L[i].strip().upper()
                 m_val = col_M[i].strip().upper() if i < len(col_M) else ""
 
-                if not j_val or k_val != "TRUE" or l_val != "FALSE" or m_val == "TRUE":
+                if not j_val or k_val != "TRUE" or l_val != "FALSE" or m_val == "FALSE":
                     continue
 
                 if j_val.startswith("<t:") and j_val.endswith(">"):
