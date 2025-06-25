@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import random
 from keep_alive import keep_alive
 from result_schedule import get_schedule_result
-from time_auto_schedule import check_schedule_alerts
+from time_auto_schedule import (check_schedule_alerts, load_alerted_events)
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -49,7 +49,8 @@ async def on_ready():
         print(f"🔁 Synced {len(synced)} slash command(s)")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
-
+        
+    load_alerted_events()
     bot.loop.create_task(
         check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
 
