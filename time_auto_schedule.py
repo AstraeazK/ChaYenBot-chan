@@ -7,19 +7,19 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
     await bot.wait_until_ready()
     while not bot.is_closed():
         try:
-            col_J = worksheet.col_values(10)[3:]
-            col_K = worksheet.col_values(11)[3:]
-            col_L = worksheet.col_values(12)[3:]
-            col_M = worksheet.col_values(13)[3:]
+            col_J = worksheet.col_values(10)[3:]  # J4+
+            col_K = worksheet.col_values(11)[3:]  # K4+
+            col_L = worksheet.col_values(12)[3:]  # L4+
+            col_M = worksheet.col_values(13)[3:]  # M4+
 
             now = datetime.now(timezone.utc)
-            target_entries = []
+            target_entries = []  # List of (timestamp, row_index) to alert
 
             for i in range(min(len(col_J), len(col_K), len(col_L), len(col_M))):
-                row_index = i + 4
+                row_index = i + 4  # Actual row number
 
                 if row_index % 2 != 0:
-                    continue
+                    continue  # Skip odd rows (M5, M7, ...)
 
                 j_val = col_J[i].strip()
                 k_val = col_K[i].strip().upper()
@@ -31,7 +31,8 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
 
                 if j_val.startswith("<t:") and j_val.endswith(">"):
                     try:
-                        timestamp = int(j_val[3:-1].split(":")[0])
+                        timestamp_str = j_val[3:-1].split(":")[0]
+                        timestamp = int(timestamp_str)
                         event_time = datetime.fromtimestamp(timestamp, tz=timezone.utc)
                         time_diff = (event_time - now).total_seconds()
 
@@ -39,7 +40,7 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
                             target_entries.append((timestamp, row_index))
 
                     except Exception as e:
-                        print(f"[ERROR] Failed to parse timestamp at row {row_index}: {e}")
+                        print(f"[ERROR] Failed to parse timestamp: {e}")
 
             if target_entries:
                 channel = bot.get_channel(channel_id)
@@ -47,10 +48,7 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
                 sent_blocks = set()
 
                 for timestamp, row_index in target_entries:
-                    matched_block = next(
-                        (block for block in result_blocks if f"<t:{timestamp}:" in block),
-                        None
-                    )
+                    matched_block = next((b for b in result_blocks if f"<t:{timestamp}:" in b), None)
 
                     if matched_block and hash(matched_block) not in sent_blocks:
                         cleaned_lines = [
@@ -71,10 +69,11 @@ async def check_schedule_alerts(bot, worksheet, channel_id):
                             await channel.send(embed=embed)
 
                         sent_blocks.add(hash(matched_block))
-
                         worksheet.update_cell(row_index, 13, "TRUE")
 
         except Exception as e:
             print(f"[ERROR] in schedule check loop: {e}")
 
         await asyncio.sleep(60)
+
+
