@@ -24,7 +24,6 @@ if base64_json is None:
 
 creds_dict = json.loads(base64.b64decode(base64_json).decode("utf-8"))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-# creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_SHEETS_JSON, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
