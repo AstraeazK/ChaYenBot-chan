@@ -50,8 +50,8 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
         
-    bot.loop.create_task(
-        check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
+    # bot.loop.create_task(
+    #     check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
 
 
 # === /gay ===
