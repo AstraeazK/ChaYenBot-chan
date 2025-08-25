@@ -197,37 +197,40 @@ ADMIN_ROLE_ID = 1234436180087668736  # ID ของ admin role
 
 @tree.command(
     name="clear-doggie",
-    description="เคลียร์พวกหนังหมา",
+    description="เคลียร์พวกหนังหมา~!",
     guild=discord.Object(id=SERVER_ID)
 )
-async def delete_role(interaction: discord.Interaction):
-    # ✅ ตรวจ role ด้วย ID
-    if ADMIN_ROLE_ID not in [role.id for role in interaction.user.roles]:
-        await interaction.response.send_message(
-            "⛔ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องมี role: admin)",
-            ephemeral=True
-        )
-        return
-
+@app_commands.checks.has_role("admin")
+async def clear_doggie_roles(interaction: discord.Interaction):
     role_ids = [
-        1371880341500989542,  # ID ของ "ยศหนังหมา"
-        1376620390071406642,  # ID ของ "ยศหนังหมา Extra"
-        1409174142665883779   # ID ของ "☢️ Super Ultimate หนังหมา"
+        1409611574104293408,  # 🔹 ยศหนังหมา
+        1409611755440832622,  # 🔹 ยศหนังหมา Extra
+        1409611813242540052   # 🔹 ☢️ Super Ultimate หนังหมา
     ]
-    deleted_roles = []
+    cleared_summary = []
 
     for role_id in role_ids:
         role = interaction.guild.get_role(role_id)
         if role:
-            await role.delete()
-            deleted_roles.append(role.name)
+            count = 0
+            for member in role.members:
+                await member.remove_roles(role, reason=f"Cleared by {interaction.user}")
+                count += 1
+            if count > 0:
+                cleared_summary.append(f"✨ เอาบทบาท **{role.name}** ออก {count} คนแล้วน้า~!")
+            else:
+                cleared_summary.append(f"🍵 บทบาท **{role.name}** ไม่มีใครถืออยู่แล้วจ้า~")
 
-    if deleted_roles:
+    if cleared_summary:
         await interaction.response.send_message(
-            f"🗑️ ลบบทบาทสำเร็จ: {', '.join(deleted_roles)}", ephemeral=True
+            "\n".join(cleared_summary),
+            ephemeral=True
         )
     else:
-        await interaction.response.send_message("⚠️ ไม่พบบทบาทที่ต้องการลบ", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ ชาเย็นจังไม่เจอบทบาทที่จะเคลียร์เลยน้า~", ephemeral=True
+        )
+
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
