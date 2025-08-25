@@ -37,6 +37,7 @@ sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
 
 intents = discord.Intents.default()
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
@@ -200,8 +201,10 @@ ADMIN_ROLE_ID = 1234436180087668736  # ID ของ admin role
     description="เคลียร์พวกหนังหมา~!",
     guild=discord.Object(id=SERVER_ID)
 )
-@app_commands.checks.has_role("admin")
+@app_commands.checks.has_role(ADMIN_ROLE_ID)
 async def clear_doggie_roles(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)  # ตอบทันที
+
     role_ids = [
         1409611574104293408,  # 🔹 ยศหนังหมา
         1409611755440832622,  # 🔹 ยศหนังหมา Extra
@@ -211,25 +214,20 @@ async def clear_doggie_roles(interaction: discord.Interaction):
 
     for role_id in role_ids:
         role = interaction.guild.get_role(role_id)
-        if role:
+        if role and interaction.guild.me.top_role > role:
+            members = list(role.members)
             count = 0
-            for member in role.members:
+            for member in members:
                 await member.remove_roles(role, reason=f"Cleared by {interaction.user}")
                 count += 1
-            if count > 0:
-                cleared_summary.append(f"✨ เอาบทบาท **{role.name}** ออก {count} คนแล้วน้า~!")
+            if count:
+                cleared_summary.append(f"✨ เอาบทบาท **{role.name}** ออก {count} คนแล้วจ้า~!")
             else:
                 cleared_summary.append(f"🍵 บทบาท **{role.name}** ไม่มีใครถืออยู่แล้วจ้า~")
+        else:
+            cleared_summary.append(f"⚠️ ไม่สามารถเอา **{role.name}** ออกได้ เพราะ role สูงกว่า bot")
 
-    if cleared_summary:
-        await interaction.response.send_message(
-            "\n".join(cleared_summary),
-            ephemeral=True
-        )
-    else:
-        await interaction.response.send_message(
-            "⚠️ ชาเย็นจังไม่เจอบทบาทที่จะเคลียร์เลยน้า~", ephemeral=True
-        )
+    await interaction.followup.send("\n".join(cleared_summary), ephemeral=True)
 
 
 keep_alive()
