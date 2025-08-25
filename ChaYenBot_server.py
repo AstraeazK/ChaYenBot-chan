@@ -193,21 +193,34 @@ TARGET_ROLES = [
     "☢️ Super Ultimate หนังหมา"
 ]
 
+ADMIN_ROLE_ID = 1234436180087668736  # ID ของ admin role
+
 @tree.command(
-    name="Clear-หนังหมา",
+    name="clear-doggie",
     description="เคลียร์พวกหนังหมา",
     guild=discord.Object(id=SERVER_ID)
 )
-@app_commands.checks.has_role("admin")
 async def delete_role(interaction: discord.Interaction):
-    role_names = ["ยศหนังหมา", "ยศหนังหมา Extra", "☢️ Super Ultimate หนังหมา"]
+    # ✅ ตรวจ role ด้วย ID
+    if ADMIN_ROLE_ID not in [role.id for role in interaction.user.roles]:
+        await interaction.response.send_message(
+            "⛔ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องมี role: admin)",
+            ephemeral=True
+        )
+        return
+
+    role_ids = [
+        1371880341500989542,  # ID ของ "ยศหนังหมา"
+        1376620390071406642,  # ID ของ "ยศหนังหมา Extra"
+        1409174142665883779   # ID ของ "☢️ Super Ultimate หนังหมา"
+    ]
     deleted_roles = []
 
-    for role_name in role_names:
-        role = discord.utils.get(interaction.guild.roles, name=role_name)
+    for role_id in role_ids:
+        role = interaction.guild.get_role(role_id)
         if role:
             await role.delete()
-            deleted_roles.append(role_name)
+            deleted_roles.append(role.name)
 
     if deleted_roles:
         await interaction.response.send_message(
@@ -215,13 +228,6 @@ async def delete_role(interaction: discord.Interaction):
         )
     else:
         await interaction.response.send_message("⚠️ ไม่พบบทบาทที่ต้องการลบ", ephemeral=True)
-
-@delete_role.error
-async def delete_role_error(interaction: discord.Interaction, error):
-    if isinstance(error, app_commands.MissingRole):
-        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องมี role: admin)", ephemeral=True)
-    else:
-        await interaction.response.send_message(f"⚠️ Error: {error}", ephemeral=True)
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
