@@ -187,6 +187,42 @@ async def help_command(interaction: discord.Interaction):
     # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
     await interaction.response.send_message(embed=embed)
 
+TARGET_ROLES = [
+    "ยศหนังหมา",
+    "ยศหนังหมา Extra",
+    "☢️ Super Ultimate หนังหมา"
+]
+
+@bot.tree.command(name="delete-role", description="ลบบทบาทพวกหนังหมา (เฉพาะ admin)")
+@app_commands.checks.has_role("admin")
+async def delete_role(interaction: discord.Interaction):
+    guild = interaction.guild
+    deleted_roles = []
+    failed_roles = []
+
+    for role_name in TARGET_ROLES:
+        role = discord.utils.get(guild.roles, name=role_name)
+        if role:
+            try:
+                await role.delete(reason=f"ลบโดย {interaction.user}")
+                deleted_roles.append(role_name)
+            except Exception as e:
+                failed_roles.append(f"{role_name} ❌ ({e})")
+        else:
+            failed_roles.append(f"{role_name} ❌ (ไม่พบ)")
+
+    response = "✅ ลบแล้ว:\n" + "\n".join(deleted_roles) if deleted_roles else "ไม่มี role ที่ถูกลบ"
+    if failed_roles:
+        response += "\n\n⚠️ ลบไม่สำเร็จ:\n" + "\n".join(failed_roles)
+
+    await interaction.response.send_message(response, ephemeral=True)  # admin เห็นคนเดียว
+
+@delete_role.error
+async def delete_role_error(interaction: discord.Interaction, error):
+    if isinstance(error, app_commands.MissingRole):
+        await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้คำสั่งนี้ (ต้องมี role: admin)", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"⚠️ Error: {error}", ephemeral=True)
 
 keep_alive()
 bot.run(DISCORD_TOKEN)
