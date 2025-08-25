@@ -193,29 +193,28 @@ TARGET_ROLES = [
     "☢️ Super Ultimate หนังหมา"
 ]
 
-@bot.tree.command(name="delete-role", description="ลบบทบาทพวกหนังหมา (เฉพาะ admin)")
+@tree.command(
+    name="Clear-หนังหมา",
+    description="เคลียร์พวกหนังหมา",
+    guild=discord.Object(id=SERVER_ID)
+)
 @app_commands.checks.has_role("admin")
 async def delete_role(interaction: discord.Interaction):
-    guild = interaction.guild
+    role_names = ["ยศหนังหมา", "ยศหนังหมา Extra", "☢️ Super Ultimate หนังหมา"]
     deleted_roles = []
-    failed_roles = []
 
-    for role_name in TARGET_ROLES:
-        role = discord.utils.get(guild.roles, name=role_name)
+    for role_name in role_names:
+        role = discord.utils.get(interaction.guild.roles, name=role_name)
         if role:
-            try:
-                await role.delete(reason=f"ลบโดย {interaction.user}")
-                deleted_roles.append(role_name)
-            except Exception as e:
-                failed_roles.append(f"{role_name} ❌ ({e})")
-        else:
-            failed_roles.append(f"{role_name} ❌ (ไม่พบ)")
+            await role.delete()
+            deleted_roles.append(role_name)
 
-    response = "✅ ลบแล้ว:\n" + "\n".join(deleted_roles) if deleted_roles else "ไม่มี role ที่ถูกลบ"
-    if failed_roles:
-        response += "\n\n⚠️ ลบไม่สำเร็จ:\n" + "\n".join(failed_roles)
-
-    await interaction.response.send_message(response, ephemeral=True)  # admin เห็นคนเดียว
+    if deleted_roles:
+        await interaction.response.send_message(
+            f"🗑️ ลบบทบาทสำเร็จ: {', '.join(deleted_roles)}", ephemeral=True
+        )
+    else:
+        await interaction.response.send_message("⚠️ ไม่พบบทบาทที่ต้องการลบ", ephemeral=True)
 
 @delete_role.error
 async def delete_role_error(interaction: discord.Interaction, error):
