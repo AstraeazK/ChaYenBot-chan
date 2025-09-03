@@ -229,6 +229,19 @@ async def clear_doggie_roles(interaction: discord.Interaction):
 
     await interaction.followup.send("\n".join(cleared_summary), ephemeral=True)
 
-
+@clear_doggie_roles.error
+async def clear_doggie_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingRole):
+        await interaction.response.send_message(
+            "⚠️ ต้องมียศ **admin** เท่านั้นถึงจะใช้คำสั่งนี้ได้น้า~!",
+            ephemeral=True
+        )
+    else:
+        # กันพลาด error อื่น
+        await interaction.response.send_message(
+            f"❌ เกิดข้อผิดพลาด: {error}",
+            ephemeral=True
+        )
+        
 keep_alive()
 bot.run(DISCORD_TOKEN)
