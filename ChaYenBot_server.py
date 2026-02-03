@@ -9,6 +9,7 @@ import random
 from keep_alive import keep_alive
 from result_schedule import get_schedule_result
 from time_auto_schedule import check_schedule_alerts
+from Point_system import setup_point_system
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -41,6 +42,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
+setup_point_system(bot) 
 
 @bot.event
 async def on_ready():
