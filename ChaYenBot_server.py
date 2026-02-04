@@ -9,7 +9,7 @@ import random
 from keep_alive import keep_alive
 from result_schedule import get_schedule_result
 from time_auto_schedule import check_schedule_alerts
-from Point_system import setup_point_system
+from Point_system import get_point_sheet, setup_point_system
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -42,7 +42,7 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-setup_point_system(bot) 
+setup_point_system(bot)
 
 @bot.event
 async def on_ready():
@@ -82,8 +82,7 @@ async def ping(interaction: discord.Interaction):
               description="ดูตารางนัดทั้งหมด",
               guild=discord.Object(id=SERVER_ID))
 async def all_schedule(interaction: discord.Interaction):
-    result_blocks = await get_schedule_result(user=None
-                                              )  # ไม่มี user = แสดงทั้งหมด
+    result_blocks = await get_schedule_result(user=None)
 
     if result_blocks:
         embed = discord.Embed(
@@ -138,7 +137,7 @@ async def user_schedule(interaction: discord.Interaction, user: discord.User):
 async def my_schedule(interaction: discord.Interaction):
     user = interaction.user
     result_blocks = await get_schedule_result(user=user)
-
+    
     if result_blocks:
         embed = discord.Embed(
             title="📅 นัดของคุณค่า~!",
@@ -162,41 +161,13 @@ async def my_schedule(interaction: discord.Interaction):
         # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
         await interaction.response.send_message(embed=embed)
 
-
-# === /help ===
-@tree.command(name="help",
-              description="แสดงคำสั่งทั้งหมดของบอท",
-              guild=discord.Object(id=SERVER_ID))
-async def help_command(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="📖 ความช่วยเหลือจากชาเย็นจัง~!",
-        description="**คำสั่งทั้งหมดที่คุณสามารถใช้ได้น้า~**",
-        color=discord.Color.purple())
-
-    embed.add_field(name="🗓️ คำสั่งตารางนัด",
-                    value="""
-            > `/all-schedule` - ตรวจสอบนัดทั้งหมดที่ยังไม่เสร็จ
-            > `/user-schedule` - ดูตารางนัดของผู้ใช้รายบุคคล
-            > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง
-            """,
-                    inline=False)
-
-    embed.add_field(name="🌈 คำสั่งอยากเทสต์ระบบก็ลองเลยค่า~!",
-                    value="""
-            > `/gay` - วันนี้คุณโทษตาเอกแล้วหรือยังนะ~?
-            """,
-                    inline=False)
-
-    # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
-    await interaction.response.send_message(embed=embed)
-
 TARGET_ROLES = [
     "ยศหนังหมา",
     "ยศหนังหมา Extra",
     "☢️ Super Ultimate หนังหมา"
 ]
 
-ADMIN_ROLE_ID = 1234436180087668736  # ID ของ admin role
+ADMIN_ROLE_ID = 1234436180087668736
 
 @tree.command(
     name="clear-doggie",
@@ -205,7 +176,7 @@ ADMIN_ROLE_ID = 1234436180087668736  # ID ของ admin role
 )
 @app_commands.checks.has_role(ADMIN_ROLE_ID)
 async def clear_doggie_roles(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)  # ตอบทันที
+    await interaction.response.defer(ephemeral=True)
 
     role_ids = [
         1409611574104293408,  # 🔹 ยศหนังหมา
@@ -244,6 +215,47 @@ async def clear_doggie_error(interaction: discord.Interaction, error: app_comman
             f"❌ เกิดข้อผิดพลาด: {error}",
             ephemeral=True
         )
-        
+
+
+# === /help ===
+@tree.command(name="help",
+              description="แสดงคำสั่งทั้งหมดของบอท",
+              guild=discord.Object(id=SERVER_ID))
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📖 ความช่วยเหลือจากชาเย็นจัง~!",
+        description="**คำสั่งทั้งหมดที่คุณสามารถใช้ได้น้า~**",
+        color=discord.Color.purple())
+
+    embed.add_field(name="🍡 ความช่วยเหลือทั่วไป",
+                    value="""
+            > `/help` - แสดงคำสั่งทั้งหมดของบอท
+            """,
+                    inline=False)
+    
+    embed.add_field(name="🗓️ คำสั่งตารางนัด",
+                    value="""
+            > `/all-schedule` - ตรวจสอบนัดทั้งหมดที่ยังไม่เสร็จ
+            > `/user-schedule` - ดูตารางนัดของผู้ใช้รายบุคคล
+            > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง
+            > `/clear-doggie` - ล้างบทบาทยศหนังหมาทั้งหมด (ใช้ได้เฉพาะ Admin)
+            """,
+                    inline=False)
+
+    embed.add_field(name="🌈 คำสั่งอยากเทสต์ระบบก็ลองเลยค่า~!",
+                    value="""
+            > `/gay` - วันนี้คุณโทษตาเอกแล้วหรือยังนะ~?
+            """,
+                    inline=False)
+    
+    embed.add_field(name="🐶 คำสั่งแต้มเด็กดี",
+                    value="""
+            > `/goodpoint` - ปรับแต้มเด็กดี (ใช้ได้เฉพาะ Admin)
+            """,
+                    inline=False)
+
+    # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
+    await interaction.response.send_message(embed=embed)
+
 keep_alive()
 bot.run(DISCORD_TOKEN)
