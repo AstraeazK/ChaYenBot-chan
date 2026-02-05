@@ -427,3 +427,88 @@ def setup_point_system(bot: discord.Client):
             ephemeral=True
         )
         view.message = msg
+
+    @bot.tree.command(
+    name="ranking",
+    description="ดูอันดับเด็กดีประจำเซิร์ฟเวอร์ 🏆🐶",
+    guild=discord.Object(id=int(os.getenv("SERVER_ID")))
+    )
+    async def ranking(interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        sheet = get_point_sheet()
+        point_ws = sheet.worksheet("Point")
+
+        rows = point_ws.get("C2:D")
+
+        data = []
+        for username, point in rows:
+            try:
+                point_val = float(point)
+            except:
+                point_val = 0.0
+
+            if point_val <= 0:
+                continue
+
+            clean_name = username.lstrip("@")
+            member = discord.utils.find(
+                lambda m: m.name.lower() == clean_name.lower(),
+                interaction.guild.members
+            )
+
+            display_name = member.display_name if member else clean_name
+            data.append({
+                "name": display_name,
+                "user": member,
+                "point": point_val
+            })
+
+        if not data:
+            await interaction.followup.send(
+                "ตอนนี้ยังไม่มีใครมีแต้มเด็กดีเลยน้า~",
+                ephemeral=False
+            )
+            return
+
+        data.sort(key=lambda x: x["point"], reverse=True)
+
+        ranked = []
+        current_rank = 0
+        last_point = None
+
+        for item in data:
+            if last_point is None or item["point"] < last_point:
+                current_rank += 1
+            last_point = item["point"]
+
+            if current_rank > 5:
+                break
+
+            ranked.append({
+                **item,
+                "rank": current_rank
+            })
+
+        rank_emoji = {
+            1: "🥇",
+            2: "🥈",
+            3: "🥉",
+            4: "4️⃣",
+            5: "5️⃣"
+        }
+
+        lines = []
+        for r in ranked:
+            emoji = rank_emoji.get(r["rank"], "")
+            lines.append(
+                f"{emoji} {r['name']} — {r['point']} แต้ม 🧋"
+            )
+
+        embed = discord.Embed(
+            title="🏆 อันดับเด็กดีประจำเซิร์ฟเวอร์ 🐶✨",
+            description="\n".join(lines) + "\n\nทุกความดี น้องชาเย็นเห็นนะ 💖",
+            color=0x9BE7C4
+        )
+
+        await interaction.followup.send(embed=embed, ephemeral=False)

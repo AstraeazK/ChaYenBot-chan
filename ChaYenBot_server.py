@@ -254,6 +254,7 @@ async def help_command(interaction: discord.Interaction):
             > `/goodpoint` - ปรับแต้มเด็กดี (ใช้ได้เฉพาะ Admin)
             > `/mypoint` - ดูแต้มเด็กดีของตัวเอง
             > `/usepoint` - ใช้แต้มเด็กดีเพื่อลดยศหนังหมา
+            > `/ranking` - ดูอันดับแต้มเด็กดีประจำเซิร์ฟเวอร์
             """,
                     inline=False)
 
