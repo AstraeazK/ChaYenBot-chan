@@ -43,7 +43,7 @@ def setup_point_system(bot: discord.Client):
 
     @bot.tree.command(
         name="goodpoint",
-        description="เพิ่ม / ลด แต้มเด็กดี",
+        description="เพิ่ม / ลด แต้มเด็กดี (ใช้ได้เฉพาะ Admin)",
         guild=discord.Object(id=int(os.getenv("SERVER_ID")))
     )
     @app_commands.describe(
@@ -116,11 +116,12 @@ def setup_point_system(bot: discord.Client):
 
         # 🛑 ป้องกันแต้มติดลบ
         if method.value == "remove" and current_point <= 0:
+            user_display = user.display_name
             embed = discord.Embed(
                 title="โอ๊ะโอ~ แต้มติดลบ! ⚠️",
                 description=(
                     f"น้องชาเย็นเขินเลยอะ…\n"
-                    f"**@{user.name} ไม่มีแต้มให้ลบแล้วน้า~** 🥺💦\n\n"
+                    f"**{user_display} ไม่มีแต้มให้ลบแล้วน้า~** 🥺💦\n\n"
                     f"ไว้ทำดีเพิ่มก่อน ค่อยกลับมาลบนะจ๊ะ~ ✨"
                 ),
                 color=discord.Color.orange()
@@ -130,7 +131,6 @@ def setup_point_system(bot: discord.Client):
 
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
-
 
          # ➕ / ➖ คำนวณแต้ม
         if method.value == "add":
@@ -171,7 +171,7 @@ def setup_point_system(bot: discord.Client):
         # 📝 log
         history_ws.append_row([
             "",
-            interaction.user.display_name,
+            interaction.user,
             f"@{user.name}",
             add_val,
             remove_val,
@@ -179,3 +179,84 @@ def setup_point_system(bot: discord.Client):
         ])
 
         await interaction.followup.send(embed=embed)
+ 
+    @bot.tree.command(
+            
+        name="mypoint",
+        description="ดูแต้มเด็กดีของตัวเอง 🐶✨",
+        guild=discord.Object(id=int(os.getenv("SERVER_ID")))
+    )
+
+    async def mypoint(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        sheet = get_point_sheet()
+        point_ws = sheet.worksheet("Point")
+
+        users = point_ws.get("C2:C")
+        target_row = None
+
+        target_name = interaction.user.name.lower()
+
+        for i, row in enumerate(users, start=2):
+            if not row:
+                continue
+
+            sheet_name = row[0].strip().lower()
+            if sheet_name.startswith("@"):
+                sheet_name = sheet_name[1:]
+
+            if sheet_name == target_name:
+                target_row = i
+                break
+
+        # ---------- ไม่พบ user ----------
+        if not target_row:
+            not_found_msgs = [
+                "น้องชาเย็นเปิดสมุดแต้มแล้ว… แต่ยังไม่เจอชื่อคุณเลย",
+                "หรือยังไม่เคยได้รับแต้มเด็กดีกันนะ?"
+            ]
+
+            embed = discord.Embed(
+                title="ไม่พบแต้มเด็กดี",
+                description=random.choice(not_found_msgs),
+                color=0xF5A623
+            )
+            embed.set_footer(text="ลองทำดีดูอีกนิด แล้วกลับมาดูใหม่น้า~ 💖")
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        # ---------- พบ user ----------
+        point = float(point_ws.cell(target_row, 4).value or 0)
+
+        success_msgs = [
+            "น้องชาเย็นเช็กสมุดแต้มให้แล้ว!",
+            "🐶📒 เปิดสมุดแต้มเด็กดีให้ดู~",
+            "มาดูผลงานความดีของคุณกัน!"
+        ]
+
+        embed = discord.Embed(
+            title="แต้มเด็กดีของคุณ 🐾",
+            description=random.choice(success_msgs),
+            color=0x9BE7C4
+        )
+        embed.add_field(
+            name="ชื่อในเซิร์ฟเวอร์",
+            value=interaction.user.display_name,
+            inline=False
+        )
+        embed.add_field(
+            name="แต้มเด็กดีทั้งหมด",
+            value=f"**{point} แต้ม** 🧋",
+            inline=False
+        )
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    DOG_ROLE_IDS = [
+        1409611574104293408,  # ยศหนังหมา
+        1409611755440832622,  # ยศหนังหมา Extra
+        1409611813242540052,  # Super Ultimate หนังหมา
+        1442895665301557450   # ภัยพิบัติเคลื่อนที่
+    ]   
