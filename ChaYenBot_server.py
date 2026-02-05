@@ -253,6 +253,7 @@ async def help_command(interaction: discord.Interaction):
                     value="""
             > `/goodpoint` - ปรับแต้มเด็กดี (ใช้ได้เฉพาะ Admin)
             > `/mypoint` - ดูแต้มเด็กดีของตัวเอง
+            > `/usepoint` - ใช้แต้มเด็กดีเพื่อลดยศหนังหมา
             """,
                     inline=False)
 

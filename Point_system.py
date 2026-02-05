@@ -305,7 +305,6 @@ def setup_point_system(bot: discord.Client):
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             ])
 
-            # ---------- ปิดข้อความ private ----------
             if self.message:
                 await self.message.edit(
                     embed=discord.Embed(
@@ -316,22 +315,18 @@ def setup_point_system(bot: discord.Client):
                     view=None
                 )
 
-            # ---------- ประกาศผลแบบ public ----------
             embed = discord.Embed(
                 title=f"ลดยศหนังหมาให้ {self.target.display_name} สำเร็จ 🎉",
-                description=random.choice([
-                    f"🐶⬇️ หนังหมาของ **{self.target.display_name}** เบาลงแล้ว!",
-                    f"✨ ใช้แต้มเด็กดีสำเร็จ!",
-                    f"ชาเย็นขอปรบมือให้ความดีครั้งนี้~"
-                ]),
+                description=(
+                    f"✨ ความดีครั้งนี้มาจาก\n"
+                    f"💖 **{interaction.user.display_name}**\n\n"
+                    f"📒 แต้มเด็กดีคงเหลือ\n"
+                    f"**{new_point} แต้ม**"
+                ),
                 color=0x9BE7C4
             )
+
             embed.set_thumbnail(url=self.target.display_avatar.url)
-            embed.add_field(
-                name="แต้มเด็กดีคงเหลือ",
-                value=f"**{new_point} แต้ม**",
-                inline=False
-            )
 
             await interaction.channel.send(embed=embed)
             self.stop()
@@ -364,7 +359,6 @@ def setup_point_system(bot: discord.Client):
     async def usepoint(interaction: discord.Interaction, user: discord.Member):
         await interaction.response.defer(ephemeral=True)
 
-        # ---------- ตรวจยศ ----------
         dog_roles = [r for r in user.roles if r.id in DOG_ROLE_IDS]
         if not dog_roles:
             await interaction.followup.send(
@@ -381,7 +375,6 @@ def setup_point_system(bot: discord.Client):
         if current_index > 0:
             role_to_add = interaction.guild.get_role(DOG_ROLE_IDS[current_index - 1])
 
-        # ---------- หาแต้มผู้ใช้ ----------
         sheet = get_point_sheet()
         point_ws = sheet.worksheet("Point")
 
@@ -396,7 +389,7 @@ def setup_point_system(bot: discord.Client):
 
         if not caller_row:
             await interaction.followup.send(
-                "🧋❓ น้องชาเย็นหาแต้มของคุณไม่เจอเลย",
+                "น้องชาเย็นหาแต้มของคุณไม่เจอเลย",
                 ephemeral=True
             )
             return
@@ -404,12 +397,11 @@ def setup_point_system(bot: discord.Client):
         current_point = float(point_ws.cell(caller_row, 4).value or 0)
         if current_point < 1:
             await interaction.followup.send(
-                "🧋🥺 แต้มไม่พอเลยน้า~ ทำดีเพิ่มอีกนิดก่อน!",
+                "แต้มไม่พอเลยน้า~ ทำดีเพิ่มอีกนิดก่อน!",
                 ephemeral=True
             )
             return
 
-        # ---------- ขอคำยืนยัน ----------
         embed = discord.Embed(
             title="ยืนยันการใช้แต้ม",
             description=(
