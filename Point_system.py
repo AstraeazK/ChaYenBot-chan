@@ -260,3 +260,178 @@ def setup_point_system(bot: discord.Client):
         1409611813242540052,  # Super Ultimate หนังหมา
         1442895665301557450   # ภัยพิบัติเคลื่อนที่
     ]   
+
+    class ConfirmUsePoint(discord.ui.View):
+        def __init__(self, author, target, role_to_remove, role_to_add, row, current_point):
+            super().__init__(timeout=30)
+            self.author = author
+            self.target = target
+            self.role_to_remove = role_to_remove
+            self.role_to_add = role_to_add
+            self.row = row
+            self.current_point = current_point
+            self.message: discord.Message | None = None
+
+        async def interaction_check(self, interaction: discord.Interaction) -> bool:
+            if interaction.user != self.author:
+                await interaction.response.send_message(
+                    "ปุ่มนี้ไม่ใช่ของคุณน้า~",
+                    ephemeral=True
+                )
+                return False
+            return True
+
+        @discord.ui.button(label="ยืนยัน 💖", style=discord.ButtonStyle.success)
+        async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+            # ---------- ใช้แต้ม ----------
+            sheet = get_point_sheet()
+            point_ws = sheet.worksheet("Point")
+            history_ws = sheet.worksheet("History")
+
+            new_point = max(0, self.current_point - 1)
+            point_ws.update_cell(self.row, 4, new_point)
+
+            await self.target.remove_roles(self.role_to_remove)
+            if self.role_to_add:
+                await self.target.add_roles(self.role_to_add)
+
+            history_ws.append_row([
+                "",
+                interaction.user.display_name,
+                f"@{interaction.user.name}",
+                "",
+                1,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ])
+
+            # ---------- ปิดข้อความ private ----------
+            if self.message:
+                await self.message.edit(
+                    embed=discord.Embed(
+                        title="ดำเนินการเรียบร้อย",
+                        description="น้องชาเย็นจัดการให้แล้วน้า~",
+                        color=0xB0B0B0
+                    ),
+                    view=None
+                )
+
+            # ---------- ประกาศผลแบบ public ----------
+            embed = discord.Embed(
+                title=f"ลดยศหนังหมาให้ {self.target.display_name} สำเร็จ 🎉",
+                description=random.choice([
+                    f"🐶⬇️ หนังหมาของ **{self.target.display_name}** เบาลงแล้ว!",
+                    f"✨ ใช้แต้มเด็กดีสำเร็จ!",
+                    f"ชาเย็นขอปรบมือให้ความดีครั้งนี้~"
+                ]),
+                color=0x9BE7C4
+            )
+            embed.set_thumbnail(url=self.target.display_avatar.url)
+            embed.add_field(
+                name="แต้มเด็กดีคงเหลือ",
+                value=f"**{new_point} แต้ม**",
+                inline=False
+            )
+
+            await interaction.channel.send(embed=embed)
+            self.stop()
+
+        @discord.ui.button(label="ยกเลิก ❌", style=discord.ButtonStyle.danger)
+        async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.message:
+                await self.message.edit(
+                    embed=discord.Embed(
+                        title="ยกเลิกการใช้แต้ม",
+                        description=(
+                            "โอเคเลยน้า~ 💭\n"
+                            "น้องชาเย็นยังไม่ได้ใช้แต้มให้ใครเลย\n\n"
+                            "คิดอีกครั้งแล้วค่อยมากดใหม่ได้เสมอ 🐶✨"
+                        ),
+                        color=0xB0B0B0
+                    ),
+                    view=None
+                )
+            self.stop()
+
+    @bot.tree.command(
+        name="usepoint",
+        description="ใช้แต้มเด็กดีเพื่อลดยศหนังหมา 🐶⬇️",
+        guild=discord.Object(id=int(os.getenv("SERVER_ID")))
+    )
+    @app_commands.describe(
+        user="คนที่ต้องการลดยศ (ตัวเองหรือผู้อื่น)"
+    )
+    async def usepoint(interaction: discord.Interaction, user: discord.Member):
+        await interaction.response.defer(ephemeral=True)
+
+        # ---------- ตรวจยศ ----------
+        dog_roles = [r for r in user.roles if r.id in DOG_ROLE_IDS]
+        if not dog_roles:
+            await interaction.followup.send(
+                f"🧋😇 **{user.display_name}** ไม่มีหนังหมาให้ลดยศเลยน้า~",
+                ephemeral=True
+            )
+            return
+
+        current_role = max(dog_roles, key=lambda r: DOG_ROLE_IDS.index(r.id))
+        current_index = DOG_ROLE_IDS.index(current_role.id)
+
+        role_to_remove = current_role
+        role_to_add = None
+        if current_index > 0:
+            role_to_add = interaction.guild.get_role(DOG_ROLE_IDS[current_index - 1])
+
+        # ---------- หาแต้มผู้ใช้ ----------
+        sheet = get_point_sheet()
+        point_ws = sheet.worksheet("Point")
+
+        users = point_ws.get("C2:C")
+        caller_row = None
+        caller_name = interaction.user.name.lower()
+
+        for i, row in enumerate(users, start=2):
+            if row and row[0].lstrip("@").lower() == caller_name:
+                caller_row = i
+                break
+
+        if not caller_row:
+            await interaction.followup.send(
+                "🧋❓ น้องชาเย็นหาแต้มของคุณไม่เจอเลย",
+                ephemeral=True
+            )
+            return
+
+        current_point = float(point_ws.cell(caller_row, 4).value or 0)
+        if current_point < 1:
+            await interaction.followup.send(
+                "🧋🥺 แต้มไม่พอเลยน้า~ ทำดีเพิ่มอีกนิดก่อน!",
+                ephemeral=True
+            )
+            return
+
+        # ---------- ขอคำยืนยัน ----------
+        embed = discord.Embed(
+            title="ยืนยันการใช้แต้ม",
+            description=(
+                f"ใช้ **1 แต้มเด็กดี**\n"
+                f"เพื่อลดยศหนังหมาให้ **{user.display_name}** ใช่ไหม?"
+            ),
+            color=0xF5A623
+        )
+        embed.set_thumbnail(url=user.display_avatar.url)
+
+        view = ConfirmUsePoint(
+            author=interaction.user,
+            target=user,
+            role_to_remove=role_to_remove,
+            role_to_add=role_to_add,
+            row=caller_row,
+            current_point=current_point
+        )
+
+        msg = await interaction.followup.send(
+            embed=embed,
+            view=view,
+            ephemeral=True
+        )
+        view.message = msg
