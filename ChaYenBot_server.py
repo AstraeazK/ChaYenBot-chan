@@ -171,7 +171,7 @@ ADMIN_ROLE_ID = 1234436180087668736
 
 @tree.command(
     name="clear-doggie",
-    description="เคลียร์พวกหนังหมา~!",
+    description="เคลียร์พวกหนังหมา~! (ใช้ได้เฉพาะ Admin)",
     guild=discord.Object(id=SERVER_ID)
 )
 @app_commands.checks.has_role(ADMIN_ROLE_ID)
@@ -181,7 +181,8 @@ async def clear_doggie_roles(interaction: discord.Interaction):
     role_ids = [
         1409611574104293408,  # 🔹 ยศหนังหมา
         1409611755440832622,  # 🔹 ยศหนังหมา Extra
-        1409611813242540052   # 🔹 ☢️ Super Ultimate หนังหมา
+        1409611813242540052,   # 🔹 ☢️ Super Ultimate หนังหมา
+        1442895665301557450  # 🔹 ภัยพิบัติเคลื่อนที่
     ]
     cleared_summary = []
 
@@ -251,6 +252,7 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name="🐶 คำสั่งแต้มเด็กดี",
                     value="""
             > `/goodpoint` - ปรับแต้มเด็กดี (ใช้ได้เฉพาะ Admin)
+            > `/mypoint` - ดูแต้มเด็กดีของตัวเอง
             """,
                     inline=False)
 
