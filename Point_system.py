@@ -171,7 +171,7 @@ def setup_point_system(bot: discord.Client):
         # 📝 log
         history_ws.append_row([
             "",
-            interaction.user,
+            interaction.user.name,
             f"@{user.name}",
             add_val,
             remove_val,
