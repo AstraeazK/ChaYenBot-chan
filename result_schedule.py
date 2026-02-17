@@ -8,12 +8,10 @@ import os
 import json
 import base64
 
-with open("emoji.json", "r", encoding="utf-8") as f:
-    emoji_map = json.load(f)
-
 load_dotenv()
 GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
 SHEET_URL = os.getenv("SHEET_URL")
+EMOJI_SHEET_URL = os.getenv("Emoji_SHEET_URL")
 
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
@@ -27,6 +25,32 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
+
+def load_emoji_map():
+    try:
+        emoji_sheet = client.open_by_url(EMOJI_SHEET_URL)
+        emoji_worksheet = emoji_sheet.sheet1
+        col_C = emoji_worksheet.col_values(3)[1:]
+        col_D = emoji_worksheet.col_values(4)[1:]
+        
+        emoji_map = {}
+        for name, emoji in zip(col_C, col_D):
+            if name and emoji:
+                emoji_map[name.strip()] = emoji.strip()
+        
+        print(f"✅ Loaded {len(emoji_map)} emojis from Google Sheets")
+        return emoji_map
+    except Exception as e:
+        print(f"❌ Failed to load emoji map from Google Sheets: {e}")
+        print("Falling back to emoji.json...")
+        try:
+            with open("emoji.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e2:
+            print(f"❌ Failed to load emoji.json: {e2}")
+            return {}
+
+emoji_map = load_emoji_map()
 
 async def get_schedule_result(user=None):
     col_K = worksheet.col_values(11)[3:]

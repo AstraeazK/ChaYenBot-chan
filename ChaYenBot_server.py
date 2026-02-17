@@ -15,11 +15,9 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
 SHEET_URL = os.getenv("SHEET_URL")
+EMOJI_SHEET_URL = os.getenv("Emoji_SHEET_URL")
 SERVER_ID = int(os.getenv("SERVER_ID"))
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-
-with open("emoji.json", "r", encoding="utf-8") as f:
-    emoji_map = json.load(f)
 
 scope = [
     'https://spreadsheets.google.com/feeds',
@@ -36,6 +34,38 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
+
+def load_emoji_map():
+    """Load emoji map from Google Sheets Emoji_SHEET_URL
+    Column C contains Icon names (e.g., Icon__Achlys)
+    Column D contains emoji values (e.g., <:Icon__Achlys:1368184154218430635>)
+    """
+    try:
+        emoji_sheet = client.open_by_url(EMOJI_SHEET_URL)
+        emoji_worksheet = emoji_sheet.sheet1
+        
+        # Get all values from columns C and D starting from row 2
+        col_C = emoji_worksheet.col_values(3)[1:]  # Column C (index 3), skip header
+        col_D = emoji_worksheet.col_values(4)[1:]  # Column D (index 4), skip header
+        
+        emoji_map = {}
+        for name, emoji in zip(col_C, col_D):
+            if name and emoji:  # Only add if both values exist
+                emoji_map[name.strip()] = emoji.strip()
+        
+        print(f"✅ Loaded {len(emoji_map)} emojis from Google Sheets")
+        return emoji_map
+    except Exception as e:
+        print(f"❌ Failed to load emoji map from Google Sheets: {e}")
+        print("Falling back to emoji.json...")
+        try:
+            with open("emoji.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e2:
+            print(f"❌ Failed to load emoji.json: {e2}")
+            return {}
+
+emoji_map = load_emoji_map()
 
 intents = discord.Intents.default()
 intents.members = True
