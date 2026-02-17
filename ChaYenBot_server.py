@@ -36,21 +36,15 @@ sheet = client.open_by_url(SHEET_URL)
 worksheet = sheet.get_worksheet(2)
 
 def load_emoji_map():
-    """Load emoji map from Google Sheets Emoji_SHEET_URL
-    Column C contains Icon names (e.g., Icon__Achlys)
-    Column D contains emoji values (e.g., <:Icon__Achlys:1368184154218430635>)
-    """
     try:
         emoji_sheet = client.open_by_url(EMOJI_SHEET_URL)
         emoji_worksheet = emoji_sheet.sheet1
-        
-        # Get all values from columns C and D starting from row 2
-        col_C = emoji_worksheet.col_values(3)[1:]  # Column C (index 3), skip header
-        col_D = emoji_worksheet.col_values(4)[1:]  # Column D (index 4), skip header
+        col_C = emoji_worksheet.col_values(3)[1:]
+        col_D = emoji_worksheet.col_values(4)[1:]
         
         emoji_map = {}
         for name, emoji in zip(col_C, col_D):
-            if name and emoji:  # Only add if both values exist
+            if name and emoji:
                 emoji_map[name.strip()] = emoji.strip()
         
         print(f"✅ Loaded {len(emoji_map)} emojis from Google Sheets")
