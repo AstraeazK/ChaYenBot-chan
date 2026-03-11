@@ -53,11 +53,12 @@ def load_emoji_map():
 emoji_map = load_emoji_map()
 
 async def get_schedule_result(user=None):
+    col_J = worksheet.col_values(10)[3:]
     col_K = worksheet.col_values(11)[3:]
     col_L = worksheet.col_values(12)[3:]
     col_N = worksheet.col_values(15)[3:]
 
-    result_blocks = []
+    schedule_items = [] 
 
     for i in range(0, len(col_L), 2):
         if i >= len(col_K):
@@ -100,6 +101,22 @@ async def get_schedule_result(user=None):
             for key, emoji in emoji_map.items():
                 block = block.replace(f":{key}:", emoji)
 
-            result_blocks.append(block)
+            # Extract timestamp for sorting
+            timestamp_str = col_J[i].strip() if i < len(col_J) else "0"
+            try:
+                # Extract the number from <t:123456:F> format
+                if "<t:" in timestamp_str and ":F>" in timestamp_str:
+                    timestamp_num = int(timestamp_str.split("<t:")[1].split(":F>")[0])
+                else:
+                    timestamp_num = 0
+            except (ValueError, IndexError):
+                timestamp_num = 0
+            
+            schedule_items.append((timestamp_num, block))
+
+    # Sort by timestamp (earliest first)
+    schedule_items.sort(key=lambda x: x[0])
+    
+    result_blocks = [block for _, block in schedule_items]
 
     return result_blocks
