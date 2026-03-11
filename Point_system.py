@@ -48,7 +48,8 @@ def setup_point_system(bot: discord.Client):
     )
     @app_commands.describe(
         method="เลือกเพิ่มหรือลดแต้ม",
-        user="คนที่ต้องการปรับแต้ม"
+        user="คนที่ต้องการปรับแต้ม",
+        rank_up_user="[ไม่บังคับ] คนที่ต้องการเพิ่มยศ"
     )
     @app_commands.choices(method=[
         app_commands.Choice(name="➕ เพิ่มแต้ม", value="add"),
@@ -57,7 +58,8 @@ def setup_point_system(bot: discord.Client):
     async def goodpoint(
         interaction: discord.Interaction,
         method: app_commands.Choice[str],
-        user: discord.Member
+        user: discord.Member,
+        rank_up_user: discord.Member = None
     ):
         if not any(role.id == ADMIN_ROLE_ID for role in interaction.user.roles):
             await interaction.response.send_message(
@@ -179,6 +181,71 @@ def setup_point_system(bot: discord.Client):
         ])
 
         await interaction.followup.send(embed=embed)
+
+        # 🎖️ ถ้ามี rank_up_user ให้เพิ่มยศ
+        if rank_up_user:
+            DOG_ROLE_NAMES = [
+                "ยศหนังหมา",
+                "ยศหนังหมา Extra",
+                "☢️ Super Ultimate หนังหมา",
+                "ภัยพิบัติเคลื่อนที่"
+            ]
+            
+            # หายศปัจจุบันของ rank_up_user
+            dog_roles = [r for r in rank_up_user.roles if r.id in DOG_ROLE_IDS]
+            
+            if dog_roles:
+                # มียศแล้ว หาตำแหน่งในลิสต์
+                current_role = max(dog_roles, key=lambda r: DOG_ROLE_IDS.index(r.id))
+                current_index = DOG_ROLE_IDS.index(current_role.id)
+                
+                # ถ้าอยู่ยศสุดท้าย (ภัยพิบัติเคลื่อนที่) ไม่ต้องเปลี่ยน
+                if current_index == len(DOG_ROLE_IDS) - 1:
+                    await interaction.followup.send(
+                        f"⚠️ **{rank_up_user.display_name}** อยู่ยศสูงสุดแล้ว ({DOG_ROLE_NAMES[current_index]}) ไม่สามารถเพิ่มได้เลยน้า~",
+                        ephemeral=True
+                    )
+                else:
+                    # เพิ่มยศขึ้นหนึ่งขั้น
+                    old_role_id = DOG_ROLE_IDS[current_index]
+                    new_role_id = DOG_ROLE_IDS[current_index + 1]
+                    
+                    old_role = interaction.guild.get_role(old_role_id)
+                    new_role = interaction.guild.get_role(new_role_id)
+                    
+                    if old_role and new_role:
+                        await rank_up_user.remove_roles(old_role)
+                        await rank_up_user.add_roles(new_role)
+                        
+                        rank_embed = discord.Embed(
+                            title=f"🎉 เพิ่มยศให้ {rank_up_user.display_name} สำเร็จ!",
+                            description=(
+                                f"**ยศเก่า:** {DOG_ROLE_NAMES[current_index]}\n"
+                                f"**ยศใหม่:** {DOG_ROLE_NAMES[current_index + 1]}\n\n"
+                                f"น้องชาเย็นเชียร์ให้นะคะ~ ✨💖"
+                            ),
+                            color=discord.Color.gold()
+                        )
+                        rank_embed.set_thumbnail(url=rank_up_user.display_avatar.url)
+                        await interaction.followup.send(embed=rank_embed)
+            else:
+                # ไม่มียศเลย เพิ่มยศแรก
+                first_role_id = DOG_ROLE_IDS[0]
+                first_role = interaction.guild.get_role(first_role_id)
+                
+                if first_role:
+                    await rank_up_user.add_roles(first_role)
+                    
+                    rank_embed = discord.Embed(
+                        title=f"🎉 เพิ่มยศให้ {rank_up_user.display_name} สำเร็จ!",
+                        description=(
+                            f"**ยศใหม่:** {DOG_ROLE_NAMES[0]} 🎖️\n\n"
+                            f"ยินดีต้อนรับเข้าสู่อันดับหนังหมาค่ะ~ 🐕💖"
+                        ),
+                        color=discord.Color.gold()
+                    )
+                    rank_embed.set_thumbnail(url=rank_up_user.display_avatar.url)
+                    await interaction.followup.send(embed=rank_embed)
  
     @bot.tree.command(
             
