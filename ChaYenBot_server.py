@@ -244,8 +244,8 @@ async def clear_doggie_error(interaction: discord.Interaction, error: app_comman
 
 # === /help ===
 @tree.command(name="help",
-              description="แสดงคำสั่งทั้งหมดของบอท",
-              guild=discord.Object(id=SERVER_ID))
+            description="แสดงคำสั่งทั้งหมดของบอท",
+            guild=discord.Object(id=SERVER_ID))
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
         title="📖 ความช่วยเหลือจากชาเย็นจัง~!",
