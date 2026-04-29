@@ -11,6 +11,16 @@ from result_schedule import get_schedule_result
 from time_auto_schedule import check_schedule_alerts
 from Point_system import get_point_sheet, setup_point_system
 
+
+TARGET_ROLES = [
+    "ยศหนังหมา",
+    "ยศหนังหมา Extra",
+    "☢️ Super Ultimate หนังหมา"
+]
+
+ADMIN_ROLE_ID = 1234436180087668736
+Barista_ROLE_ID = 1497890819787587725
+
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
@@ -185,57 +195,55 @@ async def my_schedule(interaction: discord.Interaction):
         # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
         await interaction.response.send_message(embed=embed)
 
-TARGET_ROLES = [
-    "ยศหนังหมา",
-    "ยศหนังหมา Extra",
-    "☢️ Super Ultimate หนังหมา"
-]
-
-ADMIN_ROLE_ID = 1234436180087668736
-
+# === /clear-doggie ===
 @tree.command(
     name="clear-doggie",
-    description="เคลียร์พวกหนังหมา~! (ใช้ได้เฉพาะ Admin)",
+    description="เคลียร์พวกหนังหมา~! (ใช้ได้เฉพาะ Admin/Barista)",
     guild=discord.Object(id=SERVER_ID)
 )
-@app_commands.checks.has_role(ADMIN_ROLE_ID)
+@app_commands.checks.has_any_role(ADMIN_ROLE_ID, Barista_ROLE_ID)
 async def clear_doggie_roles(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
 
     role_ids = [
         1409611574104293408,  # 🔹 ยศหนังหมา
         1409611755440832622,  # 🔹 ยศหนังหมา Extra
-        1409611813242540052,   # 🔹 ☢️ Super Ultimate หนังหมา
-        1442895665301557450  # 🔹 ภัยพิบัติเคลื่อนที่
+        1409611813242540052,  # 🔹 ☢️ Super Ultimate หนังหมา
+        1442895665301557450   # 🔹 ภัยพิบัติเคลื่อนที่
     ]
     cleared_summary = []
 
     for role_id in role_ids:
         role = interaction.guild.get_role(role_id)
+
         if role and interaction.guild.me.top_role > role:
             members = list(role.members)
             count = 0
+
             for member in members:
                 await member.remove_roles(role, reason=f"Cleared by {interaction.user}")
                 count += 1
+
             if count:
                 cleared_summary.append(f"✨ เอาบทบาท **{role.name}** ออก {count} คนแล้วจ้า~!")
             else:
                 cleared_summary.append(f"🍵 บทบาท **{role.name}** ไม่มีใครถืออยู่แล้วจ้า~")
         else:
-            cleared_summary.append(f"⚠️ ไม่สามารถเอา **{role.name}** ออกได้ เพราะ role สูงกว่า bot")
+            if role:
+                cleared_summary.append(f"⚠️ ไม่สามารถเอา **{role.name}** ออกได้ เพราะ role สูงกว่า bot")
+            else:
+                cleared_summary.append(f"⚠️ ไม่พบ role ID: {role_id}")
 
     await interaction.followup.send("\n".join(cleared_summary), ephemeral=True)
 
 @clear_doggie_roles.error
 async def clear_doggie_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.MissingRole):
+    if isinstance(error, app_commands.MissingAnyRole):
         await interaction.response.send_message(
-            "⚠️ ต้องมียศ **admin** เท่านั้นถึงจะใช้คำสั่งนี้ได้น้า~!",
+            "⚠️ ต้องมียศ **Admin หรือ Barista** เท่านั้นถึงจะใช้คำสั่งนี้ได้น้า~!",
             ephemeral=True
         )
     else:
-        # กันพลาด error อื่น
         await interaction.response.send_message(
             f"❌ เกิดข้อผิดพลาด: {error}",
             ephemeral=True
