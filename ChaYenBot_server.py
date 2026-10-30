@@ -1,33 +1,42 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
-import gspread
-import os, json, base64
-from oauth2client.service_account import ServiceAccountCredentials
-from dotenv import load_dotenv
+import base64
+import json
+import logging
+import os
 import random
-from keep_alive import keep_alive
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
+import discord
+import gspread
+from discord import app_commands
+from discord.ext import commands, tasks
+from dotenv import load_dotenv
+from oauth2client.service_account import ServiceAccountCredentials
+
+from channel_config import (
+    send_interaction_response,
+    set_response_channel_id
+)
 from result_schedule import get_schedule_result
-from time_auto_schedule import check_schedule_alerts
-from Point_system import get_point_sheet, setup_point_system
+from Point_system import setup_point_system
 
-
-TARGET_ROLES = [
-    "ยศหนังหมา",
-    "ยศหนังหมา Extra",
-    "☢️ Super Ultimate หนังหมา"
-]
 
 ADMIN_ROLE_ID = 1234436180087668736
 Barista_ROLE_ID = 1497890819787587725
+DOGGIE_ROLE_IDS = [
+    1409611574104293408,
+    1409611755440832622,
+    1409611813242540052,
+    1442895665301557450
+]
+THAILAND_TZ = ZoneInfo("Asia/Bangkok")
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GOOGLE_SHEETS_JSON = os.getenv("GOOGLE_SHEETS_JSON")
 SHEET_URL = os.getenv("SHEET_URL")
 EMOJI_SHEET_URL = os.getenv("Emoji_SHEET_URL")
 SERVER_ID = int(os.getenv("SERVER_ID"))
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 scope = [
     'https://spreadsheets.google.com/feeds',
@@ -43,7 +52,6 @@ creds_dict = json.loads(base64.b64decode(base64_json).decode("utf-8"))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
-worksheet = sheet.get_worksheet(2)
 
 def load_emoji_map():
     try:
@@ -86,9 +94,63 @@ async def on_ready():
         print(f"🔁 Synced {len(synced)} slash command(s)")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
-        
-    # bot.loop.create_task(
-    #     check_schedule_alerts(bot, worksheet, channel_id=CHANNEL_ID))
+    if not clear_doggie_roles_weekly.is_running():
+        clear_doggie_roles_weekly.start()
+
+
+async def clear_doggie_guild_roles(guild: discord.Guild, reason: str) -> list[str]:
+    cleared_summary: list[str] = []
+    bot_member = guild.me
+
+    for role_id in DOGGIE_ROLE_IDS:
+        role = guild.get_role(role_id)
+
+        if role and bot_member and bot_member.top_role > role:
+            members = list(role.members)
+            for member in members:
+                await member.remove_roles(role, reason=reason)
+
+            if members:
+                cleared_summary.append(
+                    f"✨ เอาบทบาท **{role.name}** ออก {len(members)} คนแล้วจ้า~!"
+                )
+            else:
+                cleared_summary.append(
+                    f"🍵 บทบาท **{role.name}** ไม่มีใครถืออยู่แล้วจ้า~"
+                )
+        elif role:
+            cleared_summary.append(
+                f"⚠️ ไม่สามารถเอา **{role.name}** ออกได้ เพราะ role สูงกว่า bot"
+            )
+        else:
+            cleared_summary.append(f"⚠️ ไม่พบ role ID: {role_id}")
+
+    return cleared_summary
+
+
+@tasks.loop(time=time(hour=14, minute=0, tzinfo=THAILAND_TZ))
+async def clear_doggie_roles_weekly():
+    if datetime.now(THAILAND_TZ).weekday() != 2:
+        return
+
+    guild = bot.get_guild(SERVER_ID)
+    if guild is None:
+        logger.error("Could not find guild %s for the weekly doggie role reset", SERVER_ID)
+        return
+
+    try:
+        summary = await clear_doggie_guild_roles(
+            guild,
+            reason="Weekly Wednesday doggie role reset"
+        )
+        logger.info("Weekly doggie role reset: %s", " | ".join(summary))
+    except Exception:
+        logger.exception("Failed to complete the weekly doggie role reset")
+
+
+@clear_doggie_roles_weekly.before_loop
+async def before_clear_doggie_roles_weekly():
+    await bot.wait_until_ready()
 
 
 # === /gay ===
@@ -109,7 +171,7 @@ async def ping(interaction: discord.Interaction):
         "สายรุ้งแสบตา~! ตาเอกปล่อยออร่า Gay แบบ 200% แล้วค่า~! 💥🌈 ใครไม่ไหว ออกไปตั้งหลักก่อนนะคะ~ 😆💘"
     ]
     selected_message = random.choice(messages)
-    await interaction.response.send_message(selected_message)
+    await send_interaction_response(interaction, content=selected_message)
 
 # === /all-schedule ===
 @tree.command(name="all-schedule",
@@ -129,13 +191,13 @@ async def all_schedule(interaction: discord.Interaction):
                             value=f"{block}\n\u200b",
                             inline=False)
 
-        await interaction.response.send_message(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
     else:
         embed = discord.Embed(
             title="✨ ยังไม่มีนัดเลย~!",
             description="ว่างทั้งสัปดาห์เลยค่า~ ไปเที่ยวกับชาเย็นจังมั้ย~ ☁️💙",
             color=discord.Color.green())
-        await interaction.response.send_message(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
 
 
 # === /user-schedule ===
@@ -156,12 +218,12 @@ async def user_schedule(interaction: discord.Interaction, user: discord.User):
                             value=f"{block}\n\u200b",
                             inline=False)
 
-        await interaction.response.send_message(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
     else:
         embed = discord.Embed(title=f"✨ {user.display_name} ยังไม่มีนัดเลย~!",
                               description="ว่างโล่งเหมือนใจชาเย็นจังเลยค่ะ~ 🩵",
                               color=discord.Color.green())
-        await interaction.response.send_message(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
 
 
 # === /my-schedule ===
@@ -184,7 +246,7 @@ async def my_schedule(interaction: discord.Interaction):
                             inline=False)
 
         # embed.set_footer(text="ชาเย็นจัง - ขยันจำตารางแทนให้เสมอเลยค่า~! 💙")
-        await interaction.response.send_message(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
 
     else:
         embed = discord.Embed(
@@ -193,7 +255,7 @@ async def my_schedule(interaction: discord.Interaction):
             "ชาเย็นจังดีใจมากๆ เลยนะคะที่ไม่มีนัดค้างอยู่~ ไปพักผ่อนกันเถอะ! 💖📅",
             color=discord.Color.green())
         # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
-        await interaction.response.send_message(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
 
 # === /clear-doggie ===
 @tree.command(
@@ -204,37 +266,64 @@ async def my_schedule(interaction: discord.Interaction):
 @app_commands.checks.has_any_role(ADMIN_ROLE_ID, Barista_ROLE_ID)
 async def clear_doggie_roles(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
+    if interaction.guild is None:
+        await interaction.followup.send(
+            "คำสั่งนี้ใช้ได้เฉพาะในเซิร์ฟเวอร์",
+            ephemeral=True
+        )
+        return
 
-    role_ids = [
-        1409611574104293408,  # 🔹 ยศหนังหมา
-        1409611755440832622,  # 🔹 ยศหนังหมา Extra
-        1409611813242540052,  # 🔹 ☢️ Super Ultimate หนังหมา
-        1442895665301557450   # 🔹 ภัยพิบัติเคลื่อนที่
-    ]
-    cleared_summary = []
+    cleared_summary = await clear_doggie_guild_roles(
+        interaction.guild,
+        reason=f"Cleared by {interaction.user}"
+    )
+    await send_interaction_response(
+        interaction,
+        content="\n".join(cleared_summary),
+        ephemeral=True
+    )
 
-    for role_id in role_ids:
-        role = interaction.guild.get_role(role_id)
 
-        if role and interaction.guild.me.top_role > role:
-            members = list(role.members)
-            count = 0
+@tree.command(
+    name="set-channel",
+    description="ตั้งช่องสำหรับคำตอบสาธารณะของบอท (Admin)",
+    guild=discord.Object(id=SERVER_ID)
+)
+@app_commands.checks.has_role(ADMIN_ROLE_ID)
+@app_commands.describe(channel="ช่องที่จะให้บอทส่งคำตอบสาธารณะ")
+async def set_channel(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel
+):
+    bot_member = interaction.guild.me if interaction.guild else None
+    if bot_member is None or not channel.permissions_for(bot_member).send_messages:
+        await interaction.response.send_message(
+            "บอทไม่มีสิทธิ์ส่งข้อความในช่องนี้",
+            ephemeral=True
+        )
+        return
 
-            for member in members:
-                await member.remove_roles(role, reason=f"Cleared by {interaction.user}")
-                count += 1
+    set_response_channel_id(channel.id)
+    await interaction.response.send_message(
+        f"ตั้งช่องตอบกลับของบอทเป็น {channel.mention} แล้ว",
+        ephemeral=True
+    )
 
-            if count:
-                cleared_summary.append(f"✨ เอาบทบาท **{role.name}** ออก {count} คนแล้วจ้า~!")
-            else:
-                cleared_summary.append(f"🍵 บทบาท **{role.name}** ไม่มีใครถืออยู่แล้วจ้า~")
-        else:
-            if role:
-                cleared_summary.append(f"⚠️ ไม่สามารถเอา **{role.name}** ออกได้ เพราะ role สูงกว่า bot")
-            else:
-                cleared_summary.append(f"⚠️ ไม่พบ role ID: {role_id}")
 
-    await interaction.followup.send("\n".join(cleared_summary), ephemeral=True)
+@set_channel.error
+async def set_channel_error(
+    interaction: discord.Interaction,
+    error: app_commands.AppCommandError
+):
+    if isinstance(error, app_commands.MissingRole):
+        message = "⚠️ ต้องมียศ **Admin** เท่านั้นถึงจะตั้งช่องตอบกลับได้"
+    else:
+        message = f"❌ ตั้งช่องตอบกลับไม่สำเร็จ: {error}"
+
+    if interaction.response.is_done():
+        await interaction.followup.send(message, ephemeral=True)
+    else:
+        await interaction.response.send_message(message, ephemeral=True)
 
 @clear_doggie_roles.error
 async def clear_doggie_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -263,6 +352,7 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name="🍡 ความช่วยเหลือทั่วไป",
                     value="""
             > `/help` - แสดงคำสั่งทั้งหมดของบอท
+            > `/set-channel` - ตั้งช่องรับคำตอบสาธารณะของบอท (Admin)
             """,
                     inline=False)
     
@@ -271,7 +361,8 @@ async def help_command(interaction: discord.Interaction):
             > `/all-schedule` - ตรวจสอบนัดทั้งหมดที่ยังไม่เสร็จ
             > `/user-schedule` - ดูตารางนัดของผู้ใช้รายบุคคล
             > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง
-            > `/clear-doggie` - ล้างบทบาทยศหนังหมาทั้งหมด (ใช้ได้เฉพาะ Admin)
+            > `/clear-doggie` - ล้างบทบาทยศหนังหมา (Admin/Barista)
+            > ระบบล้างยศหนังหมาอัตโนมัติทุกวันพุธ เวลา 14:00 น.
             """,
                     inline=False)
 
@@ -283,7 +374,7 @@ async def help_command(interaction: discord.Interaction):
     
     embed.add_field(name="🐶 คำสั่งแต้มเด็กดี",
                     value="""
-            > `/goodpoint` - ปรับแต้มเด็กดี (ใช้ได้เฉพาะ Admin)
+            > `/goodpoint` - ปรับแต้มเด็กดี (Admin/Barista)
             > `/mypoint` - ดูแต้มเด็กดีของตัวเอง
             > `/usepoint` - ใช้แต้มเด็กดีเพื่อลดยศหนังหมา
             > `/ranking` - ดูอันดับแต้มเด็กดีประจำเซิร์ฟเวอร์
@@ -291,7 +382,6 @@ async def help_command(interaction: discord.Interaction):
                     inline=False)
 
     # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยนัดหมายสุดคิ้วท์ 💙")
-    await interaction.response.send_message(embed=embed)
+    await send_interaction_response(interaction, embed=embed)
 
-keep_alive()
 bot.run(DISCORD_TOKEN)

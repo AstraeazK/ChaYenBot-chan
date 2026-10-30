@@ -5,6 +5,10 @@ import os, json, base64
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import random
+from channel_config import (
+    public_responses_are_routed,
+    send_interaction_response
+)
 
 # ---------- Google Sheet (เฉพาะ Point System) ----------
 def get_point_sheet():
@@ -37,13 +41,14 @@ def chayen_embed(title: str, description: str, color: discord.Color):
 
 
 ADMIN_ROLE_ID = 1234436180087668736
+BARISTA_ROLE_ID = 1497890819787587725
 
 # ---------- Slash Command ----------
 def setup_point_system(bot: discord.Client):
 
     @bot.tree.command(
         name="goodpoint",
-        description="เพิ่ม / ลด แต้มเด็กดี (ใช้ได้เฉพาะ Admin)",
+        description="เพิ่ม / ลด แต้มเด็กดี (ใช้ได้เฉพาะ Admin/Barista)",
         guild=discord.Object(id=int(os.getenv("SERVER_ID")))
     )
     @app_commands.describe(
@@ -61,14 +66,17 @@ def setup_point_system(bot: discord.Client):
         user: discord.Member,
         rank_up_user: discord.Member = None
     ):
-        if not any(role.id == ADMIN_ROLE_ID for role in interaction.user.roles):
+        allowed_role_ids = {ADMIN_ROLE_ID, BARISTA_ROLE_ID}
+        if not any(role.id in allowed_role_ids for role in interaction.user.roles):
             await interaction.response.send_message(
-                "⚠️ ต้องมียศ **admin** เท่านั้นถึงจะใช้คำสั่งนี้ได้น้า~!",
+                "⚠️ ต้องมียศ **Admin หรือ Barista** เท่านั้นถึงจะใช้คำสั่งนี้ได้น้า~!",
                 ephemeral=True
             )
             return
 
-        await interaction.response.defer()
+        await interaction.response.defer(
+            ephemeral=public_responses_are_routed()
+        )
 
         sheet = get_point_sheet()
         point_ws = sheet.worksheet("Point")
@@ -180,7 +188,7 @@ def setup_point_system(bot: discord.Client):
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ])
 
-        await interaction.followup.send(embed=embed)
+        await send_interaction_response(interaction, embed=embed)
 
         # 🎖️ ถ้ามี rank_up_user ให้เพิ่มยศ
         if rank_up_user:
@@ -201,8 +209,12 @@ def setup_point_system(bot: discord.Client):
                 
                 # ถ้าอยู่ยศสุดท้าย (ภัยพิบัติเคลื่อนที่) ไม่ต้องเปลี่ยน
                 if current_index == len(DOG_ROLE_IDS) - 1:
-                    await interaction.followup.send(
-                        f"⚠️ **{rank_up_user.display_name}** อยู่ยศสูงสุดแล้ว ({DOG_ROLE_NAMES[current_index]}) ไม่สามารถเพิ่มได้เลยน้า~",
+                    await send_interaction_response(
+                        interaction,
+                        content=(
+                            f"⚠️ **{rank_up_user.display_name}** อยู่ยศสูงสุดแล้ว "
+                            f"({DOG_ROLE_NAMES[current_index]}) ไม่สามารถเพิ่มได้เลยน้า~"
+                        ),
                         ephemeral=True
                     )
                 else:
@@ -227,7 +239,7 @@ def setup_point_system(bot: discord.Client):
                             color=discord.Color.gold()
                         )
                         rank_embed.set_thumbnail(url=rank_up_user.display_avatar.url)
-                        await interaction.followup.send(embed=rank_embed)
+                        await send_interaction_response(interaction, embed=rank_embed)
             else:
                 # ไม่มียศเลย เพิ่มยศแรก
                 first_role_id = DOG_ROLE_IDS[0]
@@ -245,7 +257,7 @@ def setup_point_system(bot: discord.Client):
                         color=discord.Color.gold()
                     )
                     rank_embed.set_thumbnail(url=rank_up_user.display_avatar.url)
-                    await interaction.followup.send(embed=rank_embed)
+                    await send_interaction_response(interaction, embed=rank_embed)
  
     @bot.tree.command(
             
@@ -396,7 +408,7 @@ def setup_point_system(bot: discord.Client):
 
             embed.set_thumbnail(url=self.target.display_avatar.url)
 
-            await interaction.channel.send(embed=embed)
+            await send_interaction_response(interaction, embed=embed)
             self.stop()
 
         @discord.ui.button(label="ยกเลิก ❌", style=discord.ButtonStyle.danger)
@@ -502,7 +514,9 @@ def setup_point_system(bot: discord.Client):
     guild=discord.Object(id=int(os.getenv("SERVER_ID")))
     )
     async def ranking(interaction: discord.Interaction):
-        await interaction.response.defer()
+        await interaction.response.defer(
+            ephemeral=public_responses_are_routed()
+        )
 
         sheet = get_point_sheet()
         point_ws = sheet.worksheet("Point")
@@ -533,9 +547,9 @@ def setup_point_system(bot: discord.Client):
             })
 
         if not data:
-            await interaction.followup.send(
-                "ตอนนี้ยังไม่มีใครมีแต้มเด็กดีเลยน้า~",
-                ephemeral=False
+            await send_interaction_response(
+                interaction,
+                content="ตอนนี้ยังไม่มีใครมีแต้มเด็กดีเลยน้า~"
             )
             return
 
@@ -579,4 +593,4 @@ def setup_point_system(bot: discord.Client):
             color=0x9BE7C4
         )
 
-        await interaction.followup.send(embed=embed, ephemeral=False)
+        await send_interaction_response(interaction, embed=embed)
