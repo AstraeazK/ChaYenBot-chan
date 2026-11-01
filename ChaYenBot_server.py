@@ -127,7 +127,7 @@ async def clear_doggie_guild_roles(guild: discord.Guild, reason: str) -> list[st
 
     return cleared_summary
 
-
+# ==================================== ล้างยศอัตโนมัติทุกวันพุธเวลา 15:00 น. ไทย ====================================
 @tasks.loop(time=time(hour=15, minute=0, tzinfo=THAILAND_TZ))
 async def clear_doggie_roles_weekly():
     if datetime.now(THAILAND_TZ).weekday() != 2:
@@ -153,7 +153,7 @@ async def before_clear_doggie_roles_weekly():
     await bot.wait_until_ready()
 
 
-# === /gay ===
+# ==================================== /gay ====================================
 @tree.command(name="gay",
               description="วันนี้คุณโทษตาเอกแล้วหรือยัง",
               guild=discord.Object(id=SERVER_ID))
@@ -173,7 +173,7 @@ async def ping(interaction: discord.Interaction):
     selected_message = random.choice(messages)
     await send_interaction_response(interaction, content=selected_message)
 
-# === /all-schedule ===
+# ==================================== /all-schedule =======================================
 @tree.command(name="all-schedule",
               description="ดูตารางนัดทั้งหมด",
               guild=discord.Object(id=SERVER_ID))
@@ -200,7 +200,7 @@ async def all_schedule(interaction: discord.Interaction):
         await send_interaction_response(interaction, embed=embed)
 
 
-# === /user-schedule ===
+# ==================================== /user-schedule ====================================
 @tree.command(name="user-schedule",
               description="ดูตารางนัดของผู้ใช้",
               guild=discord.Object(id=SERVER_ID))
@@ -226,7 +226,7 @@ async def user_schedule(interaction: discord.Interaction, user: discord.User):
         await send_interaction_response(interaction, embed=embed)
 
 
-# === /my-schedule ===
+# ==================================== /my-schedule ====================================
 @tree.command(name="my-schedule",
               description="ดูตารางนัดของฉัน",
               guild=discord.Object(id=SERVER_ID))
@@ -257,7 +257,7 @@ async def my_schedule(interaction: discord.Interaction):
         # embed.set_footer(text="ชาเย็นจัง - ผู้ช่วยตารางนัดสุดคิ้วท์ 💙")
         await send_interaction_response(interaction, embed=embed)
 
-# === /clear-doggie ===
+# ==================================== /clear-doggie ====================================
 @tree.command(
     name="clear-doggie",
     description="เคลียร์พวกหนังหมา~! (ใช้ได้เฉพาะ Admin/Barista)",
@@ -283,7 +283,7 @@ async def clear_doggie_roles(interaction: discord.Interaction):
         ephemeral=True
     )
 
-
+# ==================================== /set-channel ====================================
 @tree.command(
     name="set-channel",
     description="ตั้งช่องสำหรับคำตอบสาธารณะของบอท (Admin)",
@@ -339,7 +339,7 @@ async def clear_doggie_error(interaction: discord.Interaction, error: app_comman
         )
 
 
-# === /help ===
+# ==================================== /help ====================================
 @tree.command(name="help",
             description="แสดงคำสั่งทั้งหมดของบอท",
             guild=discord.Object(id=SERVER_ID))
