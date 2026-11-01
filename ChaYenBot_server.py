@@ -29,6 +29,7 @@ DOGGIE_ROLE_IDS = [
     1409611813242540052,
     1442895665301557450
 ]
+DOGGIE_RESET_ANNOUNCEMENT_CHANNEL_ID = 1418965592450273422
 THAILAND_TZ = ZoneInfo("Asia/Bangkok")
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,38 @@ async def clear_doggie_roles_weekly():
         logger.info("Weekly doggie role reset: %s", " | ".join(summary))
     except Exception:
         logger.exception("Failed to complete the weekly doggie role reset")
+        return
+
+    channel = bot.get_channel(DOGGIE_RESET_ANNOUNCEMENT_CHANNEL_ID)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(DOGGIE_RESET_ANNOUNCEMENT_CHANNEL_ID)
+        except discord.HTTPException:
+            logger.exception("Failed to fetch the doggie reset announcement channel")
+            return
+
+    if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+        logger.error(
+            "Doggie reset announcement channel %s is not a text channel",
+            DOGGIE_RESET_ANNOUNCEMENT_CHANNEL_ID
+        )
+        return
+
+    announcement = discord.Embed(
+        description=(
+            "🍧 ปุ๊งปั๊ง~! ถึงเวลารีเซ็ตยศหนังหมาประจำสัปดาห์แล้วค่าา~!\n"
+            "ใครจะได้เลื่อนขั้น ใครจะได้อยู่ต่อ... ขอให้โชคดีนะคะ อิอิ~ 🐶💖"
+        ),
+        color=discord.Color(0xFF0066)
+    )
+    try:
+        await channel.send(embed=announcement)
+        logger.info(
+            "Sent weekly doggie role reset announcement to channel %s",
+            DOGGIE_RESET_ANNOUNCEMENT_CHANNEL_ID
+        )
+    except discord.HTTPException:
+        logger.exception("Failed to send the doggie reset announcement")
 
 
 @clear_doggie_roles_weekly.before_loop
@@ -362,7 +395,7 @@ async def help_command(interaction: discord.Interaction):
             > `/user-schedule` - ดูตารางนัดของผู้ใช้รายบุคคล
             > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง
             > `/clear-doggie` - ล้างบทบาทยศหนังหมา (Admin/Barista)
-            > ระบบล้างยศหนังหมาอัตโนมัติทุกวันพุธ เวลา 15:00 น. ไทย
+            > ระบบล้างยศหนังหมาอัตโนมัติทุกวันพุธ เวลา 13:00 น. ไทย
             """,
                     inline=False)
 
