@@ -128,7 +128,7 @@ async def clear_doggie_guild_roles(guild: discord.Guild, reason: str) -> list[st
     return cleared_summary
 
 
-@tasks.loop(time=time(hour=14, minute=0, tzinfo=THAILAND_TZ))
+@tasks.loop(time=time(hour=15, minute=0, tzinfo=THAILAND_TZ))
 async def clear_doggie_roles_weekly():
     if datetime.now(THAILAND_TZ).weekday() != 2:
         return
@@ -362,7 +362,7 @@ async def help_command(interaction: discord.Interaction):
             > `/user-schedule` - ดูตารางนัดของผู้ใช้รายบุคคล
             > `/my-schedule` - ดูตารางนัดเฉพาะของคุณเอง
             > `/clear-doggie` - ล้างบทบาทยศหนังหมา (Admin/Barista)
-            > ระบบล้างยศหนังหมาอัตโนมัติทุกวันพุธ เวลา 14:00 น.
+            > ระบบล้างยศหนังหมาอัตโนมัติทุกวันพุธ เวลา 15:00 น. ไทย
             """,
                     inline=False)
 
